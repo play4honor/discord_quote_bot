@@ -25,7 +25,7 @@ def quote(ctx, msg_id : str):
         msg_ = yield from bot.get_message(ctx.message.channel, msg_id)
         yield from bot.say('**' + msg_.author.name + 
                             ' [' + msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S") + '] said:** ' +
-                            '_via ' + ctx.message.author.name + '_' +
+                            ' _via ' + ctx.message.author.name + '_ ' +
                             '```' + msg_.clean_content + '```')
 
         yield from bot.delete_message(ctx.message)
