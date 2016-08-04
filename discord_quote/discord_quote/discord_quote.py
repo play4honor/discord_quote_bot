@@ -1,3 +1,4 @@
+import datetime
 import discord
 from discord.ext import commands
 import asyncio
@@ -17,14 +18,27 @@ def on_ready():
     print('------')
 
 
-@bot.command()  
+@bot.command(pass_context=True)  
 @asyncio.coroutine
-def quote(msg_id : str):
-    if msg_id == "test":
-        yield from bot.say("THIS IS ONLY HERE FOR BASIC TESTING")
-    else:
-        msg_ = bot.get_message(bot.channel, msg_id)
-        yield from bot.say(msg_.author.nick + ' said ' + msg_.content)
+def quote(ctx, msg_id : str):
+    try:
+        msg_ = yield from bot.get_message(ctx.message.channel, msg_id)
+        yield from bot.say('_' + msg_.author.name + 
+                          ' [' + msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S") + '] said:_ ```' +
+                           msg_.clean_content + '```')
+    except discord.errors.HTTPException:
+        yield from bot.say("Quote not found in this channel")
+
+@bot.command(pass_context=True)  
+@asyncio.coroutine
+def misquote(ctx , msg_id : str):
+    try:
+        msg_ = yield from bot.get_message(ctx.message.channel, msg_id)
+        yield from bot.say('_' + msg_.author.name + 
+                           ' [' + msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S") + '] said:_ ```' +
+                           "Jet fuel can't melt steel beams!" + '```')
+    except discord.errors.HTTPException:
+        yield from bot.say("Quote not found in this channel")
 
 bot.run('MjEwNTYyMDMxNjg0ODEyODEx.CoQk0A.UYp9ovxqHMJv10rA2DB96lpClmE')
 
