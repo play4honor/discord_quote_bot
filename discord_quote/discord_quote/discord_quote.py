@@ -40,5 +40,8 @@ def misquote(ctx , msg_id : str):
     except discord.errors.HTTPException:
         yield from bot.say("Quote not found in this channel")
 
-bot.run('MjEwNTYyMDMxNjg0ODEyODEx.CoQk0A.UYp9ovxqHMJv10rA2DB96lpClmE')
+with open('token.txt', 'r') as tok:
+    token = tok.read()
+
+bot.run(token)
 
