@@ -23,11 +23,20 @@ def on_ready():
 def quote(ctx, msg_id : str, *reply : str):
     try:
         msg_ = yield from bot.get_message(ctx.message.channel, msg_id)
-        yield from bot.say('**' + msg_.author.name + 
-                            ' [' + msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S") + '] said:** ' +
-                            '_via ' + ctx.message.author.name + '_ ' +
-                            '```' + msg_.clean_content + '```' +
-                            ' '.join(reply))
+        
+        if not reply:
+            yield from bot.say('**' + msg_.author.name + 
+                                ' [' + msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S") + '] said:** ' +
+                                '_via ' + ctx.message.author.name + '_ ' +
+                                '```' + msg_.clean_content + '```')
+
+        else: 
+            # replace with ctx.message.author.mention for interactable name
+            yield from bot.say('**' + msg_.author.name + 
+                    ' [' + msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S") + '] said:** ' +
+                    '```' + msg_.clean_content + '```' +
+                    '**' + ctx.message.author.name + ':** ' +
+                    ' '.join(reply))
 
         yield from bot.delete_message(ctx.message)
 
