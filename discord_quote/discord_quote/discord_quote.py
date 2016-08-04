@@ -55,8 +55,8 @@ def misquote(ctx , target : discord.User):
 
             faketime = datetime.datetime.now() - datetime.timedelta(minutes=5)
 
-            yield from bot.say('_' + user.name + 
-                          ' [' + faketime.strftime("%Y-%m-%d %H:%M:%S") + '] definitely said:_ ```' +
+            yield from bot.say('**' + user.name + 
+                          ' [' + faketime.strftime("%Y-%m-%d %H:%M:%S") + '] definitely said:** ```' +
                            reply.clean_content + '```')
         else:
             yield from bot.say("Insufficient Access")
