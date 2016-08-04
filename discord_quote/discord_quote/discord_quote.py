@@ -19,8 +19,12 @@ def on_ready():
 
 @bot.command()  
 @asyncio.coroutine
-def quote(msg_id : str):    
-    yield from bot.say('Message ID is ' + msg_id)
+def quote(msg_id : str):
+    if msg_id == "test":
+        yield from bot.say("THIS IS ONLY HERE FOR BASIC TESTING")
+    else:
+        msg_ = bot.get_message(bot.channel, msg_id)
+        yield from bot.say(msg_.author.nick + ' said ' + msg_.content)
 
 bot.run('MjEwNTYyMDMxNjg0ODEyODEx.CoQk0A.UYp9ovxqHMJv10rA2DB96lpClmE')
 
