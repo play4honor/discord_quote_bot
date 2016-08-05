@@ -107,7 +107,9 @@ def frames(char : str, move : str, situ : str):
         if s == 'hit':
             frames = move[0]['data']['hitAdvantage']
 
-        if frames > 0:
+        if frames > 1000:
+            yield from bot.say(c + "'s " + m + ' is knockdown/launch on ' + s)
+        elif frames > 0:
             yield from bot.say(c + "'s " + m + " is **+" + str(frames) + "** on " + s)
         elif frames == 0:
             yield from bot.say(c + "'s " + m + ' is **even** on ' + s)
