@@ -38,7 +38,7 @@ def quote(ctx, msg_id : str, *reply : str):
         else:
             output = '\n**{0} [{1}] said:** ```{2}```**{3}:** {4}'.format(
                                     msg_.author.name, 
-                                    msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                                    msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                                     msg_.clean_content, 
                                     ctx.message.author.name, 
                                     ' '.join(reply)
