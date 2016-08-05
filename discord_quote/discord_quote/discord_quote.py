@@ -29,14 +29,14 @@ def quote(ctx, msg_id : str, *reply : str):
         
         # Format message
         if not reply:
-            output = '\n**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
+            output = '**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
                                     msg_.author.name, 
                                     msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 
                                     ctx.message.author.name, 
                                     msg_.clean_content
                         )
         else:
-            output = '\n**{0} [{1}] said:** ```{2}```**{3}:** {4}'.format(
+            output = '**{0} [{1}] said:** ```{2}``` **{3}:** {4}'.format(
                                     msg_.author.name, 
                                     msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                                     msg_.clean_content, 
@@ -72,9 +72,11 @@ def misquote(ctx , target : discord.User):
 
         faketime = datetime.datetime.now() - datetime.timedelta(minutes=5)
 
-        yield from bot.say('**' + user.name + 
-                      ' [' + faketime.strftime("%Y-%m-%d %H:%M:%S") + '] definitely said:** ```' +
-                       reply.clean_content + '```')
+        yield from bot.say('**{0} [{1}] definitely said:** ```{2}```'.format(
+                            user.name,
+                            faketime.strftime("%Y-%m-%d %H:%M:%S"),
+                            reply.clean_content
+                            ))
 #        else:
 #            yield from bot.say("Insufficient Access")
         
