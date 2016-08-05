@@ -96,7 +96,7 @@ def frames(char : str, move : str, situ : str):
         # Handle crouch
         m = re.sub('cr\.', 'c.', m)
 
-        with open('normals.json', 'r') as f:
+        with open('moves.json', 'r') as f:
             moves = ujson.loads(f.read())
 
         move = [i for i in moves[c] if i['name'] == m]
