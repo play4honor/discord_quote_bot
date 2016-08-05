@@ -27,20 +27,24 @@ def quote(ctx, msg_id : str, *reply : str):
     try:
         msg_ = yield from bot.get_message(ctx.message.channel, msg_id)
         
+        # Format message
         if not reply:
-            yield from bot.say('**' + msg_.author.name + 
-                                ' [' + msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S") + '] said:** ' +
-                                '_via ' + ctx.message.author.name + '_ ' +
-                                '```' + msg_.clean_content + '```')
-
-        else: 
-            # replace with ctx.message.author.mention for interactable name
-            yield from bot.say('**' + msg_.author.name + 
-                    ' [' + msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S") + '] said:** ' +
-                    '```' + msg_.clean_content + '```' +
-                    '**' + ctx.message.author.name + ':** ' +
-                    ' '.join(reply))
-
+            output = '\n**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
+                                    msg_.author.name, 
+                                    msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 
+                                    ctx.message.author.name, 
+                                    msg_.clean_content
+                        )
+        else:
+            output = '\n**{0} [{1}] said:** ```{2}```**{3}:** {4}'.format(
+                                    msg_.author.name, 
+                                    msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                                    msg_.clean_content, 
+                                    ctx.message.author.name, 
+                                    ' '.join(reply)
+                        )
+            
+        yield from bot.say(output)
         yield from bot.delete_message(ctx.message)
 
     except discord.errors.HTTPException:
