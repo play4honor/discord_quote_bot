@@ -2,6 +2,9 @@ import datetime
 import discord
 from discord.ext import commands
 import asyncio
+import json
+import ujson
+import re
 
 description = '''
             A Bot to provide Basic Quoting functionality for Discord
@@ -47,32 +50,78 @@ def quote(ctx, msg_id : str, *reply : str):
 @asyncio.coroutine
 def misquote(ctx , target : discord.User):
     try:
-        if ctx.message.author.permissions_in(ctx.message.channel).administrator:
+#        if ctx.message.author.permissions_in(ctx.message.channel).administrator:
 
-            user = target
-            #if target[1] == "@":
-            #    user = target
-            #else:
-            #    user = ctx.message.server.get_member(target)
+        user = target
+        #if target[1] == "@":
+        #    user = target
+        #else:
+        #    user = ctx.message.server.get_member(target)
 
-            yield from bot.send_message(ctx.message.author,
-                                       'What would you like to be misattributed to ' + user.name + '?')
+        yield from bot.send_message(ctx.message.author,
+                                   'What would you like to be misattributed to ' + user.name + '?')
 
-            def priv(msg):
-                return msg.channel.is_private == True
+        def priv(msg):
+            return msg.channel.is_private == True
 
-            reply = yield from bot.wait_for_message(timeout=60.0, author=ctx.message.author, check=priv)
+        reply = yield from bot.wait_for_message(timeout=60.0, author=ctx.message.author, check=priv)
 
-            faketime = datetime.datetime.now() - datetime.timedelta(minutes=5)
+        faketime = datetime.datetime.now() - datetime.timedelta(minutes=5)
 
-            yield from bot.say('**' + user.name + 
-                          ' [' + faketime.strftime("%Y-%m-%d %H:%M:%S") + '] definitely said:** ```' +
-                           reply.clean_content + '```')
-        else:
-            yield from bot.say("Insufficient Access")
+        yield from bot.say('**' + user.name + 
+                      ' [' + faketime.strftime("%Y-%m-%d %H:%M:%S") + '] definitely said:** ```' +
+                       reply.clean_content + '```')
+#        else:
+#            yield from bot.say("Insufficient Access")
         
     except discord.ext.commands.errors.BadArgument:
         yield from bot.say("User not found")
+
+@bot.command()
+@asyncio.coroutine
+def frames(char : str, move : str, situ : str):
+    try:
+        c = char.lower()
+        m = move.lower()
+        s = situ.lower()
+
+        # Handle Regional names
+        if c == "bison":
+            c = "dictator"
+        if c == "vega":
+            c = "claw"
+        if c == "balrog":
+            c = "boxer"
+
+        # Handle crouch
+        m = re.sub('cr\.', 'c.', m)
+
+        with open('normals.json', 'r') as f:
+            moves = ujson.loads(f.read())
+
+        move = [i for i in moves[c] if i['name'] == m]
+
+        if s == 'block':
+            frames = move[0]['data']['blockAdvantage']
+
+        if s == 'hit':
+            frames = move[0]['data']['hitAdvantage']
+
+        if frames > 0:
+            yield from bot.say(c + "'s " + m + " is **+" + str(frames) + "** on " + s)
+        elif frames == 0:
+            yield from bot.say(c + "'s " + m + ' is **even** on ' + s)
+        else:
+            yield from bot.say(c + "'s " + m + ' is **' + str(frames) + '** on ' + s)
+
+    except KeyError:
+        yield from bot.say("Character Not Found")
+
+    except IndexError:
+        yield from bot.say("Move Not Found")
+
+    except UnboundLocalError:
+        yield from bot.say("Situation Not Found")
 
 with open('token.txt', 'r') as tok:
     token = tok.read()
