@@ -15,11 +15,7 @@ bot = commands.Bot(command_prefix='!', description=description)
 @bot.event
 @asyncio.coroutine
 def on_ready():
-    print('Logged in as')
-    print(bot.user.name)
-    print(bot.user.id)
-    print('------')
-
+    print('Logged in as: {0}({1})\n------'.format(bot.user.name, bot.user.id)))
 
 @bot.command(pass_context=True)  
 @asyncio.coroutine
@@ -27,28 +23,32 @@ def quote(ctx, msg_id : str, *reply : str):
     try:
         msg_ = yield from bot.get_message(ctx.message.channel, msg_id)
         
-        # Format message
+        # Format output message
         if not reply:
             output = '**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
-                                    msg_.author.name, 
-                                    msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 
-                                    ctx.message.author.name, 
-                                    msg_.clean_content
+                                msg_.author.name, 
+                                msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 
+                                ctx.message.author.name, 
+                                msg_.clean_content
                         )
         else:
             output = '**{0} [{1}] said:** ```{2}``` **{3}:** {4}'.format(
-                                    msg_.author.name, 
-                                    msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                                    msg_.clean_content, 
-                                    ctx.message.author.name, 
-                                    ' '.join(reply)
+                                msg_.author.name, 
+                                msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                                msg_.clean_content, 
+                                ctx.message.author.name, 
+                                ' '.join(reply)
                         )
             
         yield from bot.say(output)
-        yield from bot.delete_message(ctx.message)
-
     except discord.errors.HTTPException:
-        yield from bot.say("Quote not found in this channel")
+        # Return error if message not found.
+        yield from bot.say(("Quote not found in this channel {0} requested " +
+                            "by {1})").format(msg_id,
+                                              ctx.message.author.name))
+
+    # Clean up request regardless of success
+    yield from bot.delete_message(ctx.message)
 
 @bot.command(pass_context=True)  
 @asyncio.coroutine
@@ -63,12 +63,16 @@ def misquote(ctx , target : discord.User):
         #    user = ctx.message.server.get_member(target)
 
         yield from bot.send_message(ctx.message.author,
-                                   'What would you like to be misattributed to ' + user.name + '?')
+                                    ('What would you like to be '
+                                     + ' misattributed to ' 
+                                     + user.name + '?')
 
         def priv(msg):
             return msg.channel.is_private == True
 
-        reply = yield from bot.wait_for_message(timeout=60.0, author=ctx.message.author, check=priv)
+        reply = yield from bot.wait_for_message(timeout=60.0, 
+                                                author=ctx.message.author, 
+                                                check=priv)
 
         faketime = datetime.datetime.now() - datetime.timedelta(minutes=5)
 
@@ -114,13 +118,16 @@ def frames(char : str, move : str, situ : str):
             frames = move[0]['data']['hitAdvantage']
 
         if frames > 1000:
-            yield from bot.say(c + "'s " + m + ' is **knockdown/launch** on ' + s)
+            yield from bot.say(c + "'s " + m +
+                               ' is **knockdown/launch** on ' + s)
         elif frames > 0:
-            yield from bot.say(c + "'s " + m + " is **+" + str(frames) + "** on " + s)
+            yield from bot.say(c + "'s " + m + " is **+" + str(frames) +i
+                               "** on " + s)
         elif frames == 0:
             yield from bot.say(c + "'s " + m + ' is **even** on ' + s)
         else:
-            yield from bot.say(c + "'s " + m + ' is **' + str(frames) + '** on ' + s)
+            yield from bot.say(c + "'s " + m + ' is **' + str(frames) + 
+                               '** on ' + s)
 
     except KeyError:
         yield from bot.say("Character Not Found")
@@ -131,8 +138,9 @@ def frames(char : str, move : str, situ : str):
     except UnboundLocalError:
         yield from bot.say("Situation Not Found")
 
-with open('token.txt', 'r') as tok:
-    token = tok.read()
+if __name__=='__main__':
+    with open('token.txt', 'r') as token_file::
+        token = token_file.read()
 
-bot.run(token)
+    bot.run(token)
 
