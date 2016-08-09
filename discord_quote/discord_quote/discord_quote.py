@@ -43,9 +43,10 @@ def quote(ctx, msg_id : str, *reply : str):
         yield from bot.say(output)
     except discord.errors.HTTPException:
         # Return error if message not found.
-        yield from bot.say(("Quote not found in this channel {0} requested " +
-                            "by {1})").format(msg_id,
-                                              ctx.message.author.name))
+        yield from bot.say(("Quote not found in this channel ('{0}' "
+                            + "requested by "
+                            + "{1})").format(msg_id,
+                                             ctx.message.author.name))
 
     # Clean up request regardless of success
     yield from bot.delete_message(ctx.message)
