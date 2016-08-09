@@ -15,7 +15,7 @@ bot = commands.Bot(command_prefix='!', description=description)
 @bot.event
 @asyncio.coroutine
 def on_ready():
-    print('Logged in as: {0}({1})\n------'.format(bot.user.name, bot.user.id)))
+    print('Logged in as:\n{0}({1})\n------'.format(bot.user.name, bot.user.id))
 
 @bot.command(pass_context=True)  
 @asyncio.coroutine
@@ -65,7 +65,7 @@ def misquote(ctx , target : discord.User):
         yield from bot.send_message(ctx.message.author,
                                     ('What would you like to be '
                                      + ' misattributed to ' 
-                                     + user.name + '?')
+                                     + user.name + '?'))
 
         def priv(msg):
             return msg.channel.is_private == True
@@ -121,7 +121,7 @@ def frames(char : str, move : str, situ : str):
             yield from bot.say(c + "'s " + m +
                                ' is **knockdown/launch** on ' + s)
         elif frames > 0:
-            yield from bot.say(c + "'s " + m + " is **+" + str(frames) +i
+            yield from bot.say(c + "'s " + m + " is **+" + str(frames) +
                                "** on " + s)
         elif frames == 0:
             yield from bot.say(c + "'s " + m + ' is **even** on ' + s)
@@ -139,7 +139,7 @@ def frames(char : str, move : str, situ : str):
         yield from bot.say("Situation Not Found")
 
 if __name__=='__main__':
-    with open('token.txt', 'r') as token_file::
+    with open('token.txt', 'r') as token_file:
         token = token_file.read()
 
     bot.run(token)
