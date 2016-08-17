@@ -90,7 +90,7 @@ def misquote(ctx , target : discord.User):
 
 @bot.command()
 @asyncio.coroutine
-def frames(char : str, move : str, situ : str):
+def frames(char : str, move : str, situ : str=""):
     try:
         c = char.lower()
         m = move.lower()
@@ -178,7 +178,7 @@ def frames(char : str, move : str, situ : str):
                          'stunValue': 'Stun'
                         }
             
-            output = "{0}'s {1} frame data:/n".format(c, m)  
+            output = "{0}'s {1} frame data:\n".format(c, m)  
             
             # Add to output based on existing frame data
             for x in dataNames:
@@ -190,7 +190,7 @@ def frames(char : str, move : str, situ : str):
                     if x == 'hitAdvantage' and frames > 1000:
                         frames = "launch/knockdown"
                             
-                    output += "{0}: **[1}**, ".format(dataNames[x], str(frames))
+                    output += "{0}: **{1}**, ".format(dataNames[x], str(frames))
                                     
             yield from bot.say(output)
         
