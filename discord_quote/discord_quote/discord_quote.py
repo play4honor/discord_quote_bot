@@ -111,25 +111,89 @@ def frames(char : str, move : str, situ : str):
             moves = ujson.loads(f.read())
 
         move = [i for i in moves[c] if i['name'] == m]
+        
+        # Responses for startup, active, recovery
+        if s == 'startup' or s == 'recovery':
 
-        if s == 'block':
-            frames = move[0]['data']['blockAdvantage']
+            if s == 'startup':
+                frames = move[0]['data']['startupFrames']
+                
+            if s == 'recovery':
+                frames = move[0]['data'['recoveryFrames']
 
-        if s == 'hit':
-            frames = move[0]['data']['hitAdvantage']
+            yield from bot.say("{0}'s  {1} has **{2}** frames of  {3}.".format(
+                                c,
+                                m,
+                                str(frames),
+                                s
+                                ))
+        
+        # Responses for block and hit    
+        elif s == 'block' or s == 'hit':
 
-        if frames > 1000:
-            yield from bot.say(c + "'s " + m +
-                               ' is **knockdown/launch** on ' + s)
-        elif frames > 0:
-            yield from bot.say(c + "'s " + m + " is **+" + str(frames) +
-                               "** on " + s)
-        elif frames == 0:
-            yield from bot.say(c + "'s " + m + ' is **even** on ' + s)
+            if s == 'block':
+                frames = move[0]['data']['blockAdvantage']
+
+            if s == 'hit':
+                frames = move[0]['data']['hitAdvantage']
+                
+            if frames > 1000:
+                yield from bot.say(c + "'s " + m +
+                                   ' is **knockdown/launch** on ' + s)
+            elif frames > 0:
+                yield from bot.say(c + "'s " + m + " is **+" + str(frames) +
+                                   "** on " + s)
+            elif frames == 0:
+                yield from bot.say(c + "'s " + m + ' is **even** on ' + s)
+            else:
+                yield from bot.say(c + "'s " + m + ' is **' + str(frames) + 
+                                   '** on ' + s)
+
+        # Responses for damage and stun
+        elif s == 'damage' or s == 'stun':
+            
+            if s == 'damage':
+                deeps = move[0]['data']['damageValue']
+                
+            else:
+                deeps = move[0]['data']['stunValue']
+                
+            yield from bot.say("{0}'s {1} does **{2}** {3}.".format(
+                                                                    c,
+                                                                    m,
+                                                                    deeps,
+                                                                    s
+                                                                   )
+        
+        # For nothing, or anything else, respond with summary of frame data
         else:
-            yield from bot.say(c + "'s " + m + ' is **' + str(frames) + 
-                               '** on ' + s)
-
+            
+            # Dictionary of key names and nice names for printed results
+            dataNames = {'startupFrames': 'Startup',
+                         'activeFrames': 'Active',
+                         'recoveryFrames': 'Recovery',
+                         'blockAdvantage': 'On Block',
+                         'hitAdvantage': 'On Hit',
+                         'damageValue': 'Damage',
+                         'stunValue': 'Stun'
+                        }
+            
+            output = "{0}'s {1} frame data:/n".format(c, m)  
+            
+            # Add to output based on existing frame data
+            for x in dataNames:
+            
+                if x in move[0]['data']:
+                    frames = move[0]['data'][x]
+                    
+                    # Deal with knockdowns
+                    if x == 'hitAdvantage' and frames > 1000:
+                        frames = "launch/knockdown"
+                            
+                    output += "{0}: **[1}**, ".format(dataNames[x], str(frames))
+                                    
+            yield from bot.say(output)
+        
     except KeyError:
         yield from bot.say("Character Not Found")
 
