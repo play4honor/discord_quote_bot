@@ -119,7 +119,7 @@ def frames(char : str, move : str, situ : str):
                 frames = move[0]['data']['startupFrames']
                 
             if s == 'recovery':
-                frames = move[0]['data'['recoveryFrames']
+                frames = move[0]['data']['recoveryFrames']
 
             yield from bot.say("{0}'s  {1} has **{2}** frames of  {3}.".format(
                                 c,
@@ -163,7 +163,7 @@ def frames(char : str, move : str, situ : str):
                                                                     m,
                                                                     deeps,
                                                                     s
-                                                                   )
+                                                                   ))
         
         # For nothing, or anything else, respond with summary of frame data
         else:
