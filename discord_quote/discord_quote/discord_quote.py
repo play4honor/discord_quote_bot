@@ -122,7 +122,7 @@ def frames(char : str, move : str, situ : str=""):
                 frames = move[0]['data']['recoveryFrames']
 
             yield from bot.say("{0}'s  {1} has **{2}** frames of  {3}.".format(
-                                c,
+                                c.capitalize(),
                                 m,
                                 str(frames),
                                 s
@@ -159,7 +159,7 @@ def frames(char : str, move : str, situ : str=""):
                 deeps = move[0]['data']['stunValue']
                 
             yield from bot.say("{0}'s {1} does **{2}** {3}.".format(
-                                                                    c,
+                                                                    c.capitalize(),
                                                                     m,
                                                                     deeps,
                                                                     s
@@ -169,19 +169,19 @@ def frames(char : str, move : str, situ : str=""):
         else:
             
             # Dictionary of key names and nice names for printed results
-            dataNames = {'startupFrames': 'Startup',
-                         'activeFrames': 'Active',
-                         'recoveryFrames': 'Recovery',
-                         'blockAdvantage': 'On Block',
-                         'hitAdvantage': 'On Hit',
-                         'damageValue': 'Damage',
-                         'stunValue': 'Stun'
+            dataNames = {'startupFrames': ('Startup', 0),
+                         'activeFrames': ('Active', 1),
+                         'recoveryFrames': ('Recovery', 2),
+                         'blockAdvantage': ('On Block', 3),
+                         'hitAdvantage': ('On Hit', 4),
+                         'damageValue': ('Damage', 5),
+                         'stunValue': ('Stun', 6)
                         }
             
-            output = "{0}'s {1} frame data:\n".format(c, m)  
+            output = "{0}'s {1} frame data:\n".format(c.capitalize(), m)  
             
             # Add to output based on existing frame data
-            for x in dataNames:
+            for x in sorted(dataNames, key=lambda x : dataNames[x][1]):
             
                 if x in move[0]['data']:
                     frames = move[0]['data'][x]
@@ -190,8 +190,11 @@ def frames(char : str, move : str, situ : str=""):
                     if x == 'hitAdvantage' and frames > 1000:
                         frames = "launch/knockdown"
                             
-                    output += "{0}: **{1}**, ".format(dataNames[x], str(frames))
-                                    
+                    output += "{0}: **{1}**, ".format(dataNames[x][0], str(frames))
+            
+            # Remove last character (extra comma)        
+            output = output[:-1]
+            
             yield from bot.say(output)
         
     except KeyError:
