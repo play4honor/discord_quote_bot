@@ -193,7 +193,7 @@ def frames(char : str, move : str, situ : str=""):
                     output += "{0}: **{1}**, ".format(dataNames[x][0], str(frames))
             
             # Remove last character (extra comma)        
-            output = output[:-1]
+            output = output[:-2]
             
             yield from bot.say(output)
         
