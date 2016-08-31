@@ -38,7 +38,7 @@ bot = commands.Bot(command_prefix='!', description=description)
 @bot.event
 @asyncio.coroutine
 def on_ready():
-    log.info(log_msg('Logged in as: %s(%s))'), 
+    log.info(log_msg(['Logged in as: %s(%s))']), 
              bot.user.name,
              bot.user.id)
 
