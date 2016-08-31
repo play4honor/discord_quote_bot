@@ -21,12 +21,12 @@ log.addHandler(streamInstance)
 log.setLevel(logging.DEBUG)
 
 def log_msg(data):
-"""
-Accepts a list of data elements, removes the  u'\u241e'character
-from each element, and then joins the elements using u'\u241e'.
-"""
-     tmp = [d.replace(u'\u241e', ' ') for d in data]
-     return u'\u241e'.join(tmp)
+    """
+    Accepts a list of data elements, removes the  u'\u241e'character
+    from each element, and then joins the elements using u'\u241e'.
+    """
+    tmp = [d.replace(u'\u241e', ' ') for d in data]
+    return u'\u241e'.join(tmp)
 
 # Code
 description = '''
