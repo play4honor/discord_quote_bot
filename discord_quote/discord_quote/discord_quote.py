@@ -18,6 +18,7 @@ fmt = logging.Formatter(u'\u241e'.join(['%(asctime)s',
 streamInstance = logging.StreamHandler(stream=sys.stdout)
 streamInstance.setFormatter(fmt)
 log.addHandler(streamInstance)
+log.setLevel(logging.DEBUG)
 
 def log_msg(data):
 """
@@ -44,6 +45,7 @@ def on_ready():
 @bot.command(pass_context=True)  
 @asyncio.coroutine
 def quote(ctx, msg_id : str, *reply : str):
+    log.info(log_msg(['Request received', msg_id, ctx.message.channel]))
     try:
         msg_ = yield from bot.get_message(ctx.message.channel, msg_id)
         
