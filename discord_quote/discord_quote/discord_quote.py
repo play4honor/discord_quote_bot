@@ -5,7 +5,29 @@ import asyncio
 import json
 import ujson
 import re
+import logging
+import sys
 
+# Configure logging
+log = logging.getLogger(__name__)
+fmt = logging.Formatter(u'\u241e'.join(['%(asctime)s',
+                                        '%(name)s',
+                                        '%(levelname)s',
+                                        '%(funcName)s',
+                                        '%(message)s']))
+streamInstance = logging.StreamHandler(stream=sys.stdout)
+streamInstance.setFormatter(fmt)
+log.addHandler(streamInstance)
+
+def log_msg(data):
+"""
+Accepts a list of data elements, removes the  u'\u241e'character
+from each element, and then joins the elements using u'\u241e'.
+"""
+     tmp = [d.replace(u'\u241e', ' ') for d in data]
+     return u'\u241e'.join(tmp)
+
+# Code
 description = '''
             A Bot to provide Basic Quoting functionality for Discord
             '''
@@ -15,7 +37,9 @@ bot = commands.Bot(command_prefix='!', description=description)
 @bot.event
 @asyncio.coroutine
 def on_ready():
-    print('Logged in as:\n{0}({1})\n------'.format(bot.user.name, bot.user.id))
+    log.info(log_msg('Logged in as: %s(%s))'), 
+             bot.user.name,
+             bot.user.id)
 
 @bot.command(pass_context=True)  
 @asyncio.coroutine
