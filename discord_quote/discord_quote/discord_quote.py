@@ -24,6 +24,12 @@ def log_msg(data):
     """
     Accepts a list of data elements, removes the  u'\u241e'character
     from each element, and then joins the elements using u'\u241e'.
+    
+    Messages should be constructed in the format:
+        
+        {message_type}\u241e{data}
+
+    where {data} should be a \u241e delimited row.
     """
     tmp = [d.replace(u'\u241e', ' ') for d in data]
     return u'\u241e'.join(tmp)
@@ -38,17 +44,26 @@ bot = commands.Bot(command_prefix='!', description=description)
 @bot.event
 @asyncio.coroutine
 def on_ready():
-    log.info(log_msg(['Logged in as: %s(%s))']), 
-             bot.user.name,
-             bot.user.id)
+    log.info(log_msg(['login', bot.user.name, bot.user.id)]))
 
 @bot.command(pass_context=True)  
 @asyncio.coroutine
 def quote(ctx, msg_id : str, *reply : str):
-    log.info(log_msg(['Request received', msg_id, ctx.message.channel]))
+    log.info(log_msg(['received_request', 
+                      'quote',
+                      ctx.message.author.name, 
+                      ctx.message.channel,
+                      msg_id]))
     try:
         msg_ = yield from bot.get_message(ctx.message.channel, msg_id)
-        
+        log.info(log_msg(['retrieved_quote', 
+                          msg_id, 
+                          ctx.message_channel,
+                          msg_.author.name, 
+                          msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 
+                          ctx.message.author.name, 
+                          msg_.clean_content]))
+
         # Format output message
         if not reply:
             output = '**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
@@ -65,21 +80,38 @@ def quote(ctx, msg_id : str, *reply : str):
                                 ctx.message.author.name, 
                                 ' '.join(reply)
                         )
+        log.info(log_msg(['formatted_quote', reply]))
             
         yield from bot.say(output)
+
+        log.info(log_msg(['sent_message', 'quote', ctx.message.channel]))
+
     except discord.errors.HTTPException:
+        log.warning(['msg_not_found', msg_id, ctx.message.author.name]))
+
         # Return error if message not found.
         yield from bot.say(("Quote not found in this channel ('{0}' "
                             + "requested by "
                             + "{1})").format(msg_id,
                                              ctx.message.author.name))
-
+        log.info(log_msg(['sent_message', 
+                          'invalid_quote_request', 
+                          ctx.message_channel]))
+ 
     # Clean up request regardless of success
     yield from bot.delete_message(ctx.message)
+    log.info(log_msg(['deleted_request', msg_id]))
 
 @bot.command(pass_context=True)  
 @asyncio.coroutine
 def misquote(ctx , target : discord.User):
+
+    log.info(log_msg(['received_request',
+                      'misquote',
+                      ctx.message.author.name,
+                      ctx.message.channel,
+                      target]))
+
     try:
 #        if ctx.message.author.permissions_in(ctx.message.channel).administrator:
 
@@ -117,6 +149,11 @@ def misquote(ctx , target : discord.User):
 @bot.command()
 @asyncio.coroutine
 def frames(char : str, move : str, situ : str=""):
+    log.info(log_msg(['received_request',
+                      'frames',
+                      char,
+                      move,
+                      situ]))
     try:
         c = char.lower()
         m = move.lower()
