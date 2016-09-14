@@ -120,11 +120,13 @@ def misquote(ctx , target : discord.User):
         #    user = target
         #else:
         #    user = ctx.message.server.get_member(target)
-
+       
         yield from bot.send_message(ctx.message.author,
                                     ('What would you like to be '
                                      + ' misattributed to ' 
                                      + user.name + '?'))
+
+        log.info(log_msg(['sent_message', 'misquote_dm_request', user.name]))
 
         def priv(msg):
             return msg.channel.is_private == True
@@ -133,6 +135,12 @@ def misquote(ctx , target : discord.User):
                                                 author=ctx.message.author, 
                                                 check=priv)
 
+        log.info(log_msg(['received_request', 
+                          'misquote_response', 
+                          ctx.message.author.name,
+                          ctx.message.channel,
+                          reply.clean_content]))
+
         faketime = datetime.datetime.now() - datetime.timedelta(minutes=5)
 
         yield from bot.say('**{0} [{1}] definitely said:** ```{2}```'.format(
@@ -140,11 +148,25 @@ def misquote(ctx , target : discord.User):
                             faketime.strftime("%Y-%m-%d %H:%M:%S"),
                             reply.clean_content
                             ))
+
+       log.info(log_msg(['sent_message',
+                         'misquote',
+                          user.name,
+                          faketime.strftime('%Y-%m-%d %H:%M:%S'),
+                          reply.clean_content ]))
 #        else:
 #            yield from bot.say("Insufficient Access")
         
     except discord.ext.commands.errors.BadArgument:
+        log.warning(log_msg(['user_not_found',
+                             target,
+                             ctx.message.author.name]))
+
         yield from bot.say("User not found")
+
+        log.info(log_msg(['sent_message',
+                          'invalid_misquote_request',
+                          ctx.message.channel]))
 
 @bot.command()
 @asyncio.coroutine
@@ -261,17 +283,37 @@ def frames(char : str, move : str, situ : str=""):
             yield from bot.say(output)
         
     except KeyError:
+        log.warning(log_msg(['frame_data_not_found', 'character',  c]))
+
         yield from bot.say("Character Not Found")
 
+        log.info(log_msg(['sent_message',
+                          'invalid_character_request',
+                          ctx.message.channel]))
+
     except IndexError:
+        log.warning(log_msg(['frame_data_not_found', 'move',  m]))
+
         yield from bot.say("Move Not Found")
 
+        log.info(log_msg(['sent_message',
+                          'invalid_move_request',
+                          ctx.message.channel]))
+
     except UnboundLocalError:
+        log.warning(log_msg(['frame_data_not_found', 'situation',  s]))
+        
         yield from bot.say("Situation Not Found")
+
+        log.info(log_msg(['sent_message',
+                         'invalid_situation_request',
+                          ctx.message.channel]))
 
 if __name__=='__main__':
     with open('token.txt', 'r') as token_file:
         token = token_file.read()
+        log.info(log_msg(['token_read']))
 
+    log.info(log_msg(['bot_intialize']))
     bot.run(token)
-
+    
