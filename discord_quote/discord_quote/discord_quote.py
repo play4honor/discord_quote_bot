@@ -72,7 +72,7 @@ def me(ctx, *text : str):
 
     # Clean up request regardless of success
     yield from bot.delete_message(ctx.message)
-    log.info(log_msg(['deleted_request', msg_id]))
+    log.info(log_msg(['deleted_request', ctx.message.id]))
 
 
 @bot.command(pass_context=True)  
