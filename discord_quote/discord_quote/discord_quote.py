@@ -20,6 +20,10 @@ streamInstance.setFormatter(fmt)
 log.addHandler(streamInstance)
 log.setLevel(logging.DEBUG)
 
+# Load Frame Data json
+with open('moves.json', 'r') as f:
+    moves = ujson.loads(f.read())
+
 def log_msg(data):
     """
     Accepts a list of data elements, removes the  u'\u241e'character
@@ -44,7 +48,7 @@ bot = commands.Bot(command_prefix='!', description=description)
 @bot.event
 @asyncio.coroutine
 def on_ready():
-    log.info(log_msg(['login', bot.user.name, bot.user.id)]))
+    log.info(log_msg(['login', bot.user.name, bot.user.id]))
 
 @bot.command(pass_context=True)  
 @asyncio.coroutine
@@ -52,13 +56,13 @@ def quote(ctx, msg_id : str, *reply : str):
     log.info(log_msg(['received_request', 
                       'quote',
                       ctx.message.author.name, 
-                      ctx.message.channel,
+                      ctx.message.channel.name,
                       msg_id]))
     try:
         msg_ = yield from bot.get_message(ctx.message.channel, msg_id)
         log.info(log_msg(['retrieved_quote', 
                           msg_id, 
-                          ctx.message_channel,
+                          ctx.message.channel.name,
                           msg_.author.name, 
                           msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 
                           ctx.message.author.name, 
@@ -80,14 +84,14 @@ def quote(ctx, msg_id : str, *reply : str):
                                 ctx.message.author.name, 
                                 ' '.join(reply)
                         )
-        log.info(log_msg(['formatted_quote', reply]))
+        log.info(log_msg(['formatted_quote', ' '.join(reply)]))
             
         yield from bot.say(output)
 
-        log.info(log_msg(['sent_message', 'quote', ctx.message.channel]))
+        log.info(log_msg(['sent_message', 'quote', ctx.message.channel.name]))
 
     except discord.errors.HTTPException:
-        log.warning(['msg_not_found', msg_id, ctx.message.author.name]))
+        log.warning(['msg_not_found', msg_id, ctx.message.author.name])
 
         # Return error if message not found.
         yield from bot.say(("Quote not found in this channel ('{0}' "
@@ -96,7 +100,7 @@ def quote(ctx, msg_id : str, *reply : str):
                                              ctx.message.author.name))
         log.info(log_msg(['sent_message', 
                           'invalid_quote_request', 
-                          ctx.message_channel]))
+                          ctx.message.channel.name]))
  
     # Clean up request regardless of success
     yield from bot.delete_message(ctx.message)
@@ -109,11 +113,11 @@ def misquote(ctx , target : discord.User):
     log.info(log_msg(['received_request',
                       'misquote',
                       ctx.message.author.name,
-                      ctx.message.channel,
-                      target]))
+                      ctx.message.channel.name,
+                      target.name]))
 
     try:
-#        if ctx.message.author.permissions_in(ctx.message.channel).administrator:
+#        if ctx.message.author.permissions_in(ctx.message.channel.name).administrator:
 
         user = target
         #if target[1] == "@":
@@ -138,7 +142,7 @@ def misquote(ctx , target : discord.User):
         log.info(log_msg(['received_request', 
                           'misquote_response', 
                           ctx.message.author.name,
-                          ctx.message.channel,
+                          ctx.message.channel.name,
                           reply.clean_content]))
 
         faketime = datetime.datetime.now() - datetime.timedelta(minutes=5)
@@ -149,11 +153,11 @@ def misquote(ctx , target : discord.User):
                             reply.clean_content
                             ))
 
-       log.info(log_msg(['sent_message',
-                         'misquote',
-                          user.name,
-                          faketime.strftime('%Y-%m-%d %H:%M:%S'),
-                          reply.clean_content ]))
+        log.info(log_msg(['sent_message',
+                          'misquote',
+                           user.name,
+                           faketime.strftime('%Y-%m-%d %H:%M:%S'),
+                           reply.clean_content ]))
 #        else:
 #            yield from bot.say("Insufficient Access")
         
@@ -166,7 +170,7 @@ def misquote(ctx , target : discord.User):
 
         log.info(log_msg(['sent_message',
                           'invalid_misquote_request',
-                          ctx.message.channel]))
+                          ctx.message.channel.name]))
 
 @bot.command()
 @asyncio.coroutine
@@ -191,9 +195,6 @@ def frames(char : str, move : str, situ : str=""):
 
         # Handle crouch
         m = re.sub('cr\.', 'c.', m)
-
-        with open('moves.json', 'r') as f:
-            moves = ujson.loads(f.read())
 
         move = [i for i in moves[c] if i['name'] == m]
         
@@ -289,7 +290,7 @@ def frames(char : str, move : str, situ : str=""):
 
         log.info(log_msg(['sent_message',
                           'invalid_character_request',
-                          ctx.message.channel]))
+                          ctx.message.channel.name]))
 
     except IndexError:
         log.warning(log_msg(['frame_data_not_found', 'move',  m]))
@@ -298,7 +299,7 @@ def frames(char : str, move : str, situ : str=""):
 
         log.info(log_msg(['sent_message',
                           'invalid_move_request',
-                          ctx.message.channel]))
+                          ctx.message.channel.name]))
 
     except UnboundLocalError:
         log.warning(log_msg(['frame_data_not_found', 'situation',  s]))
@@ -307,7 +308,7 @@ def frames(char : str, move : str, situ : str=""):
 
         log.info(log_msg(['sent_message',
                          'invalid_situation_request',
-                          ctx.message.channel]))
+                          ctx.message.channel.name]))
 
 if __name__=='__main__':
     with open('token.txt', 'r') as token_file:
