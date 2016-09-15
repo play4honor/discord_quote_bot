@@ -52,6 +52,31 @@ def on_ready():
 
 @bot.command(pass_context=True)  
 @asyncio.coroutine
+def me(ctx, *text : str):
+    log.info(log_msg(['received_request', 
+                      'me',
+                      ctx.message.author.name, 
+                      ctx.message.channel.name,
+                      ' '.join(text)]))
+
+    output = '**{0}** {1}'.format(
+                                ctx.message.author.name, 
+                                ' '.join(text)
+                            )
+
+    log.info(log_msg(['formatted_self', ' '.join(text)]))
+
+    yield from bot.say(output)
+
+    log.info(log_msg(['sent_message', 'me', ctx.message.channel.name]))
+
+    # Clean up request regardless of success
+    yield from bot.delete_message(ctx.message)
+    log.info(log_msg(['deleted_request', msg_id]))
+
+
+@bot.command(pass_context=True)  
+@asyncio.coroutine
 def quote(ctx, msg_id : str, *reply : str):
     log.info(log_msg(['received_request', 
                       'quote',
