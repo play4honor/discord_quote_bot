@@ -59,7 +59,7 @@ def me(ctx, *text : str):
                       ctx.message.channel.name,
                       ' '.join(text)]))
 
-    output = '**{0}** {1}'.format(
+    output = '_{0} {1}_'.format(
                                 ctx.message.author.name, 
                                 ' '.join(text)
                             )
