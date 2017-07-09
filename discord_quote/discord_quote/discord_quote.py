@@ -337,8 +337,8 @@ def frames(char : str, move : str, situ : str=""):
                           ctx.message.channel.name]))
 
 if __name__=='__main__':
-   if os.environ['DISCORD_QUOTEBOT_TOKEN']:
-       log.info(log_msg(['token_read'])
+    if os.environ['DISCORD_QUOTEBOT_TOKEN']:
+        log.info(log_msg(['token_read']))
 
     log.info(log_msg(['bot_intialize']))
     bot.run(os.environ['DISCORD_QUOTEBOT_TOKEN'])
