@@ -16,5 +16,8 @@ RUN chmod u+rwx run.sh
 # Add the current version of discord_quote_bot
 COPY ./discord_quote ./discord_quote
 
+# Change to working directory
+WORKDIR ./discord_quote/discord_quote/
+
 # Run the shell file
-CMD ["./run.sh"]
+CMD ["python", "discord_quote.py"]
