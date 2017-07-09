@@ -7,6 +7,7 @@ import ujson
 import re
 import logging
 import sys
+import os
 
 # Configure logging
 log = logging.getLogger(__name__)
@@ -336,10 +337,9 @@ def frames(char : str, move : str, situ : str=""):
                           ctx.message.channel.name]))
 
 if __name__=='__main__':
-    with open('token.txt', 'r') as token_file:
-        token = token_file.read()
-        log.info(log_msg(['token_read']))
+   if os.environ['DISCORD_QUOTEBOT_TOKEN']:
+       log.info(log_msg(['token_read'])
 
     log.info(log_msg(['bot_intialize']))
-    bot.run(token)
+    bot.run(os.environ['DISCORD_QUOTEBOT_TOKEN'])
     
