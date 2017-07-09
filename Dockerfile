@@ -9,11 +9,7 @@ RUN apt-get -y update && \
     apt-get -y purge gcc && \
     apt-get -y autoremove
 
-# Make the shell script executable
-COPY ./run.sh ./
-RUN chmod u+rwx run.sh
-
-# Add the current version of discord_quote_bot
+# Copy the latest version of the bot 
 COPY ./discord_quote ./discord_quote
 
 # Change to working directory
