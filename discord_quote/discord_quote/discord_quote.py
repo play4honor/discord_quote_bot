@@ -51,6 +51,15 @@ bot = commands.Bot(command_prefix='!', description=description)
 def on_ready():
     log.info(log_msg(['login', bot.user.name, bot.user.id]))
 
+@bot.event
+@asyncio.coroutine
+def on_server_join():
+    log.info(log_msg(['bot join', bot.user.name, bot.user.id, 'server', bot.server.id]))
+            
+    yield from bot.say('yo, we in there')
+
+    log.info(log_msg(['sent_message', 'server_join', ctx.message.channel.name]))
+    
 @bot.command(pass_context=True)  
 @asyncio.coroutine
 def me(ctx, *text : str):
