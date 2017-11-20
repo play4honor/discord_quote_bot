@@ -56,7 +56,7 @@ def on_ready():
 def on_server_join():
     log.info(log_msg(['bot join', bot.user.name, bot.user.id, 'server', bot.server.id]))
             
-    yield from bot.say('yo, we in there')
+    yield from bot.send_message(bot.get_all_channels().next(), 'yo, we in there')
 
     log.info(log_msg(['sent_message', 'server_join', ctx.message.channel.name]))
     
