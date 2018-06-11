@@ -13,4 +13,4 @@ A docker image for this bot is available on Docker Hub: `docker pull cyzhang/dis
 # Additional Notes:
 
 - Builds are automated and can be monitored here: [Docker Hub Build Monitoring](https://hub.docker.com/r/cyzhang/discord_quote_bot/builds/)
-
+- Frame data source from https://github.com/D4RKONION/fatsfvframedatajson
