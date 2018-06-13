@@ -225,7 +225,7 @@ def frames(char : str, move : str, situ : str=""):
                       'Chunli': 'Chun-Li',
                       'Youngzeku':'Zeku (Young)',
                       'Yzeku':'Zeku (Young)',
-                      'Fang':'F.A.N.G.',
+                      'Fang':'F.A.N.G',
                       'Oldzeku':'Zeku (Old)',
                       'Ozeku':'Zeku (Old)',
                       'Boxer':'Balrog',
