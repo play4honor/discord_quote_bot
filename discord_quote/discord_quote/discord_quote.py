@@ -269,8 +269,12 @@ def frames(char : str, move : str, situ : str=""):
                    'jab':'LP'}
         
         # Select Move
+        if c in char_names.keys():
+            char = char_names[c]
+        else:
+            char = c
         move_name = ' '.join([directions[d], buttons[b]])
-        move = moves[char_names[c]]['moves']['normal'][move_name]
+        move = moves[char]['moves']['normal'][move_name]
         
         # Responses for startup, active, recovery
         if s in ('block', 'hit'):
@@ -282,38 +286,38 @@ def frames(char : str, move : str, situ : str=""):
                 
             if frames > 0:
                 yield from bot.say("{0}'s {1} is **+{2}** on {3}".format(
-                    char_names[c],
+                    char,
                     move_name,
                     str(frames),
                     s))
                 
             elif frames == 0:
                 yield from bot.say("{0}'s {1} is **EVEN** on {3}".format(
-                    char_names[c],
+                    char,
                     move_name,
                     s))
                 
             else:
                 yield from bot.say("{0}'s {1} is **{2}** on {3}".format(
-                    char_names[c],
+                    char,
                     move_name,
                     str(frames),
                     s))
                 
-        if s in ('startup', 'active', 'recovery'):
+        elif s in ('startup', 'active', 'recovery'):
             frames = move[s]
             yield from bot.say("{0}'s  {1} has **{2}** frames of {3}.".format(
-                                char_names[c],
+                                char,
                                 move_name,
                                 str(frames),
                                 s))
 
         # Responses for damage and stun
-        if s in ('damage', 'stun'):
+        elif s in ('damage', 'stun'):
             deeps = move[s]
                 
             yield from bot.say("{0}'s {1} does **{2}** {3}.".format(
-                                char_names[c],
+                                char,
                                 move_name,
                                 str(deeps),
                                 s))
@@ -330,7 +334,7 @@ def frames(char : str, move : str, situ : str=""):
                          'stun': ('Stun', 6)
                         }
             
-            output = "{0}'s {1} frame data:\n".format(char_names[c], move_name) 
+            output = "{0}'s {1} frame data:\n".format(char, move_name) 
             
             # Add to output based on existing frame data
             for x in sorted(dataNames, key=lambda x : dataNames[x][1]):          
