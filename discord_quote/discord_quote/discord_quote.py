@@ -330,7 +330,7 @@ def frames(char : str, move : str, situ : str=""):
                          'stun': ('Stun', 6)
                         }
             
-            output = "{0}'s {1} frame data:\n".format(char_names[c]), move_name)  
+            output = "{0}'s {1} frame data:\n".format(char_names[c], move_name) 
             
             # Add to output based on existing frame data
             for x in sorted(dataNames, key=lambda x : dataNames[x][1]):          
