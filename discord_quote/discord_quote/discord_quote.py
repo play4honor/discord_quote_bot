@@ -231,7 +231,10 @@ def frames(char : str, move : str, situ : str=""):
                       'Boxer':'Balrog',
                       'Claw':'Vega',
                       'R.mika':'R.Mika',
+                      'Mika':'R.Mika',
                       'M.bison':'M.Bison',
+                      'Bison':'M.Bison',
+                      'Bipson':'M.Bison',
                       'Dictator':'M.Bison'}
                       
         directions = {'stand':'stand',
@@ -313,7 +316,7 @@ def frames(char : str, move : str, situ : str=""):
                                 char_names[c],
                                 move_name,
                                 str(deeps),
-                                s)
+                                s))
         
         # For nothing, or anything else, respond with summary of frame data
         else:
@@ -327,7 +330,7 @@ def frames(char : str, move : str, situ : str=""):
                          'stun': ('Stun', 6)
                         }
             
-            output = "{0}'s {1} frame data:\n".format(char_names[c]), move_name)  
+            output = "{0}'s {1} frame data:\n".format(char_names[c], move_name) 
             
             # Add to output based on existing frame data
             for x in sorted(dataNames, key=lambda x : dataNames[x][1]):          
