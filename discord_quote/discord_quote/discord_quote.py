@@ -216,7 +216,7 @@ def frames(char : str, move : str, situ : str=""):
                       situ]))
     try:
         c = char.capitalize()
-        d,b = move.split('.')
+        d,b = move.lower().split('.')
         s = situ.lower()
 
         # Dictionaries
