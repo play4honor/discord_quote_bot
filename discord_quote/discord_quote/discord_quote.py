@@ -3,7 +3,6 @@ import discord
 from discord.ext import commands
 import asyncio
 import json
-import ujson
 import re
 import logging
 import sys
@@ -22,8 +21,8 @@ log.addHandler(streamInstance)
 log.setLevel(logging.DEBUG)
 
 # Load Frame Data json
-with open('moves.json', 'r') as f:
-    moves = ujson.loads(f.read())
+with open('sfv.json', 'r') as f:
+    moves = json.loads(f.read())
 
 def log_msg(data):
     """
@@ -216,102 +215,123 @@ def frames(char : str, move : str, situ : str=""):
                       move,
                       situ]))
     try:
-        c = char.lower()
-        m = move.lower()
+        c = char.capitalize()
+        d,b = move.split('.')
         s = situ.lower()
 
-        # Handle Regional names
-        if c == "bison":
-            c = "dictator"
-        if c == "vega":
-            c = "claw"
-        if c == "balrog":
-            c = "boxer"
+        # Dictionaries
+        char_names = {'Chun-li': 'Chun-Li',
+                      'Chun': 'Chun-Li',
+                      'Chunli': 'Chun-Li',
+                      'Youngzeku':'Zeku (Young)',
+                      'Yzeku':'Zeku (Young)',
+                      'Fang':'F.A.N.G.',
+                      'Oldzeku':'Zeku (Old)',
+                      'Ozeku':'Zeku (Old)',
+                      'Boxer':'Balrog',
+                      'Claw':'Vega',
+                      'R.mika':'R.Mika',
+                      'M.bison':'M.Bison',
+                      'Dictator':'M.Bison'}
+                      
+        directions = {'stand':'stand',
+                      '5':'stand',
+                      's':'stand',
+                      'st':'stand',
+                      'crouch':'crouch',
+                      '2':'crouch',
+                      'c':'crouch',
+                      'cr':'crouch',
+                      'jump':'jump',
+                      '8':'jump',
+                      'j':'jump'}
 
-        # Handle crouch
-        m = re.sub('cr\.', 'c.', m)
-
-        move = [i for i in moves[c] if i['name'] == m]
+        buttons = {'hk':'HK',
+                   'heavy kick':'HK',
+                   'roundhouse':'HK',
+                   'mk':'MK',
+                   'medium kick':'MK',
+                   'forward':'MK',
+                   'lk':'LK',
+                   'light kick':'LK',
+                   'short':'LK',
+                   'hp':'HP',
+                   'heavy punch':'HP',
+                   'fierce':'HP',
+                   'mp':'MP',
+                   'medium punch':'MP',
+                   'strong':'MP',
+                   'lp':'LP',
+                   'light punch':'LP',
+                   'jab':'LP'}
+        
+        # Select Move
+        move_name = ' '.join([directions[d], buttons[b]])
+        move = moves[char_names[c]]['moves']['normal'][move_name]
         
         # Responses for startup, active, recovery
-        if s == 'startup' or s == 'recovery':
-
-            if s == 'startup':
-                frames = move[0]['data']['startupFrames']
-                
-            if s == 'recovery':
-                frames = move[0]['data']['recoveryFrames']
-
-            yield from bot.say("{0}'s  {1} has **{2}** frames of  {3}.".format(
-                                c.capitalize(),
-                                m,
-                                str(frames),
-                                s
-                                ))
-        
-        # Responses for block and hit    
-        elif s == 'block' or s == 'hit':
-
+        if s in ('block', 'hit'):
             if s == 'block':
-                frames = move[0]['data']['blockAdvantage']
+                frames = move['onBlock']
 
             if s == 'hit':
-                frames = move[0]['data']['hitAdvantage']
+                frames = move['onHit']
                 
-            if frames > 1000:
-                yield from bot.say(c + "'s " + m +
-                                   ' is **knockdown/launch** on ' + s)
-            elif frames > 0:
-                yield from bot.say(c + "'s " + m + " is **+" + str(frames) +
-                                   "** on " + s)
+            if frames > 0:
+                yield from bot.say("{0}'s {1} is **+{2}** on {3}".format(
+                    char_names[c],
+                    move_name,
+                    str(frames),
+                    s))
+                
             elif frames == 0:
-                yield from bot.say(c + "'s " + m + ' is **even** on ' + s)
+                yield from bot.say("{0}'s {1} is **EVEN** on {3}".format(
+                    char_names[c],
+                    move_name,
+                    s))
+                
             else:
-                yield from bot.say(c + "'s " + m + ' is **' + str(frames) + 
-                                   '** on ' + s)
+                yield from bot.say("{0}'s {1} is **{2}** on {3}".format(
+                    char_names[c],
+                    move_name,
+                    str(frames),
+                    s))
+                
+        if s in ('startup', 'active', 'recovery'):
+            frames = move[s]
+            yield from bot.say("{0}'s  {1} has **{2}** frames of {3}.".format(
+                                char_names[c],
+                                move_name,
+                                str(frames),
+                                s))
 
         # Responses for damage and stun
-        elif s == 'damage' or s == 'stun':
-            
-            if s == 'damage':
-                deeps = move[0]['data']['damageValue']
-                
-            else:
-                deeps = move[0]['data']['stunValue']
+        if s in ('damage', 'stun'):
+            deeps = move[s]
                 
             yield from bot.say("{0}'s {1} does **{2}** {3}.".format(
-                                                                    c.capitalize(),
-                                                                    m,
-                                                                    deeps,
-                                                                    s
-                                                                   ))
+                                char_names[c],
+                                move_name,
+                                str(deeps),
+                                s)
         
         # For nothing, or anything else, respond with summary of frame data
         else:
-            
             # Dictionary of key names and nice names for printed results
-            dataNames = {'startupFrames': ('Startup', 0),
-                         'activeFrames': ('Active', 1),
-                         'recoveryFrames': ('Recovery', 2),
-                         'blockAdvantage': ('On Block', 3),
-                         'hitAdvantage': ('On Hit', 4),
-                         'damageValue': ('Damage', 5),
-                         'stunValue': ('Stun', 6)
+            dataNames = {'startup': ('Startup', 0),
+                         'active': ('Active', 1),
+                         'recovery': ('Recovery', 2),
+                         'onBlock': ('On Block', 3),
+                         'onHit': ('On Hit', 4),
+                         'damage': ('Damage', 5),
+                         'stun': ('Stun', 6)
                         }
             
-            output = "{0}'s {1} frame data:\n".format(c.capitalize(), m)  
+            output = "{0}'s {1} frame data:\n".format(char_names[c]), move_name)  
             
             # Add to output based on existing frame data
-            for x in sorted(dataNames, key=lambda x : dataNames[x][1]):
-            
-                if x in move[0]['data']:
-                    frames = move[0]['data'][x]
-                    
-                    # Deal with knockdowns
-                    if x == 'hitAdvantage' and frames > 1000:
-                        frames = "launch/knockdown"
-                            
-                    output += "{0}: **{1}**, ".format(dataNames[x][0], str(frames))
+            for x in sorted(dataNames, key=lambda x : dataNames[x][1]):          
+                output += "{0}: **{1}**, ".format(dataNames[x][0], str(move[x]))
             
             # Remove last character (extra comma)        
             output = output[:-2]
