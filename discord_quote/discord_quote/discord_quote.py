@@ -306,7 +306,7 @@ def frames(char : str, move : str, situ : str=""):
                 
         elif s in ('startup', 'active', 'recovery'):
             frames = move[s]
-            yield from bot.say("{0}'s  {1} has **{2}** frames of {3}.".format(
+            yield from bot.say("{0}'s {1} has **{2}** frames of {3}.".format(
                                 char,
                                 move_name,
                                 str(frames),
