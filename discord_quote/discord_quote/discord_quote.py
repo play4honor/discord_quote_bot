@@ -304,7 +304,7 @@ def frames(char : str, move : str, situ : str=""):
                     str(frames),
                     s))
                 
-        elif s in ('startup', 'active', 'recovery'):
+        elif s in ('startup', 'recovery'):
             frames = move[s]
             yield from bot.say("{0}'s {1} has **{2}** frames of {3}.".format(
                                 char,
@@ -312,6 +312,13 @@ def frames(char : str, move : str, situ : str=""):
                                 str(frames),
                                 s))
 
+        elif s == 'active':
+            frames = move[s]
+            yield from bot.say("{0}'s {1} is active for **{2}** frames.".format(
+                                char,
+                                move_name,
+                                str(frames)))
+                                
         # Responses for damage and stun
         elif s in ('damage', 'stun'):
             deeps = move[s]
