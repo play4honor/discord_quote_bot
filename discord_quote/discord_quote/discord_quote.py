@@ -94,18 +94,18 @@ def quote(ctx, msg_id : str, *reply : str):
                       msg_id]))
     try:
         msg_ = yield from bot.get_message(ctx.message.channel, msg_id)
-        
-        # Replace triple back ticks with " so it doesn't break formatting when
-        # quoting quotes
-        clean_content = msg_.clean_content.replace('```', '|')
-        
+
         log.info(log_msg(['retrieved_quote', 
                           msg_id, 
                           ctx.message.channel.name,
                           msg_.author.name, 
                           msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 
                           ctx.message.author.name, 
-                          clean_content]))
+                          msg_.clean_content]))
+
+        # Replace triple back ticks with " so it doesn't break formatting when
+        # quoting quotes
+        clean_content = msg_.clean_content.replace('```', '|')
 
         # Format output message
         if not reply:
