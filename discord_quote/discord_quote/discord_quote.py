@@ -97,7 +97,7 @@ def quote(ctx, msg_id : str, *reply : str):
         
         # Replace triple back ticks with " so it doesn't break formatting when
         # quoting quotes
-        msg_.clean_content = msg_.clean_content.replace('```', '|')
+        clean_content = msg_.clean_content.replace('```', '|')
         
         log.info(log_msg(['retrieved_quote', 
                           msg_id, 
@@ -105,7 +105,7 @@ def quote(ctx, msg_id : str, *reply : str):
                           msg_.author.name, 
                           msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 
                           ctx.message.author.name, 
-                          msg_.clean_content]))
+                          clean_content]))
 
         # Format output message
         if not reply:
@@ -113,13 +113,13 @@ def quote(ctx, msg_id : str, *reply : str):
                                 msg_.author.name, 
                                 msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 
                                 ctx.message.author.name, 
-                                msg_.clean_content
+                                clean_content
                         )
         else:
             output = '**{0} [{1}] said:** ```{2}``` **{3}:** {4}'.format(
                                 msg_.author.name, 
                                 msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                                msg_.clean_content, 
+                                clean_content, 
                                 ctx.message.author.name, 
                                 ' '.join(reply)
                         )
