@@ -59,17 +59,17 @@ def on_server_join():
 
     log.info(log_msg(['sent_message', 'server_join', ctx.message.channel.name]))
 
-@bot.command(pass_context=True)  
+@bot.command(pass_context=True)
 @asyncio.coroutine
 def me(ctx, *text : str):
-    log.info(log_msg(['received_request', 
+    log.info(log_msg(['received_request',
                       'me',
-                      ctx.message.author.name, 
+                      ctx.message.author.mention,
                       ctx.message.channel.name,
                       ' '.join(text)]))
 
     output = '_{0} {1}_'.format(
-                                ctx.message.author.name, 
+                                ctx.message.author.mention,
                                 ' '.join(text)
                             )
 
@@ -84,23 +84,24 @@ def me(ctx, *text : str):
     log.info(log_msg(['deleted_request', ctx.message.id]))
 
 
-@bot.command(pass_context=True)  
+@bot.command(pass_context=True)
 @asyncio.coroutine
 def quote(ctx, msg_id : str, *reply : str):
-    log.info(log_msg(['received_request', 
+    log.info(log_msg(['received_request',
                       'quote',
-                      ctx.message.author.name, 
+                      ctx.message.author.mention,
                       ctx.message.channel.name,
                       msg_id]))
+
     try:
         msg_ = yield from bot.get_message(ctx.message.channel, msg_id)
 
-        log.info(log_msg(['retrieved_quote', 
-                          msg_id, 
+        log.info(log_msg(['retrieved_quote',
+                          msg_id,
                           ctx.message.channel.name,
-                          msg_.author.name, 
-                          msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 
-                          ctx.message.author.name, 
+                          msg_.author.mention,
+                          msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                          ctx.message.author.mention,
                           msg_.clean_content]))
 
         # Replace triple back ticks with " so it doesn't break formatting when
@@ -110,17 +111,17 @@ def quote(ctx, msg_id : str, *reply : str):
         # Format output message
         if not reply:
             output = '**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
-                                msg_.author.name, 
-                                msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 
-                                ctx.message.author.name, 
+                                msg_.author.mention,
+                                msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                                ctx.message.author.mention,
                                 clean_content
                         )
         else:
             output = '**{0} [{1}] said:** ```{2}``` **{3}:** {4}'.format(
-                                msg_.author.name, 
+                                msg_.author.mention,
                                 msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                                clean_content, 
-                                ctx.message.author.name, 
+                                clean_content,
+                                ctx.message.author.mention,
                                 ' '.join(reply)
                         )
         log.info(log_msg(['formatted_quote', ' '.join(reply)]))
@@ -130,30 +131,30 @@ def quote(ctx, msg_id : str, *reply : str):
         log.info(log_msg(['sent_message', 'quote', ctx.message.channel.name]))
 
     except discord.errors.HTTPException:
-        log.warning(['msg_not_found', msg_id, ctx.message.author.name])
+        log.warning(['msg_not_found', msg_id, ctx.message.author.mention])
 
         # Return error if message not found.
         yield from bot.say(("Quote not found in this channel ('{0}' "
                             + "requested by "
                             + "{1})").format(msg_id,
-                                             ctx.message.author.name))
-        log.info(log_msg(['sent_message', 
-                          'invalid_quote_request', 
+                                             ctx.message.author.mention))
+        log.info(log_msg(['sent_message',
+                          'invalid_quote_request',
                           ctx.message.channel.name]))
 
     # Clean up request regardless of success
     yield from bot.delete_message(ctx.message)
     log.info(log_msg(['deleted_request', msg_id]))
 
-@bot.command(pass_context=True)  
+@bot.command(pass_context=True)
 @asyncio.coroutine
 def misquote(ctx , target : discord.User):
 
     log.info(log_msg(['received_request',
                       'misquote',
-                      ctx.message.author.name,
+                      ctx.message.author.mention,
                       ctx.message.channel.name,
-                      target.name]))
+                      target.mention]))
 
     try:
 #        if ctx.message.author.permissions_in(ctx.message.channel.name).administrator:
@@ -166,32 +167,32 @@ def misquote(ctx , target : discord.User):
 
         yield from bot.send_message(ctx.message.author, ('What would you like to be ' + ' misattributed to ' + user.name + '?'))
 
-        log.info(log_msg(['sent_message', 'misquote_dm_request', user.name]))
+        log.info(log_msg(['sent_message', 'misquote_dm_request', user.mention]))
 
         def priv(msg):
             return msg.channel.is_private == True
 
-        reply = yield from bot.wait_for_message(timeout=60.0, 
-                                                author=ctx.message.author, 
+        reply = yield from bot.wait_for_message(timeout=60.0,
+                                                author=ctx.message.author,
                                                 check=priv)
 
-        log.info(log_msg(['received_request', 
-                          'misquote_response', 
-                          ctx.message.author.name,
+        log.info(log_msg(['received_request',
+                          'misquote_response',
+                          ctx.message.author.mention,
                           ctx.message.channel.name,
                           reply.clean_content]))
 
         faketime = datetime.datetime.now() - datetime.timedelta(minutes=5)
 
         yield from bot.say('**{0} [{1}] definitely said:** ```{2}```'.format(
-                            user.name,
+                            user.mention,
                             faketime.strftime("%Y-%m-%d %H:%M:%S"),
                             reply.clean_content
                             ))
 
         log.info(log_msg(['sent_message',
                           'misquote',
-                           user.name,
+                           user.mention,
                            faketime.strftime('%Y-%m-%d %H:%M:%S'),
                            reply.clean_content ]))
 #        else:
@@ -200,7 +201,7 @@ def misquote(ctx , target : discord.User):
     except discord.ext.commands.errors.BadArgument:
         log.warning(log_msg(['user_not_found',
                              target,
-                             ctx.message.author.name]))
+                             ctx.message.author.mention]))
 
         yield from bot.say("User not found")
 
@@ -343,13 +344,13 @@ def frames(char : str, move : str, situ : str=""):
                          'stun': ('Stun', 6)
                         }
 
-            output = "{0}'s {1} frame data:\n".format(char, move_name) 
+            output = "{0}'s {1} frame data:\n".format(char, move_name)
 
             # Add to output based on existing frame data
-            for x in sorted(dataNames, key=lambda x : dataNames[x][1]):          
+            for x in sorted(dataNames, key=lambda x : dataNames[x][1]):
                 output += "{0}: **{1}**, ".format(dataNames[x][0], str(move[x]))
 
-            # Remove last character (extra comma)        
+            # Remove last character (extra comma)
             output = output[:-2]
 
             yield from bot.say(output)
