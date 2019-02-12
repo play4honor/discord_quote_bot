@@ -28,9 +28,9 @@ def log_msg(data):
     """
     Accepts a list of data elements, removes the  u'\u241e'character
     from each element, and then joins the elements using u'\u241e'.
-    
+
     Messages should be constructed in the format:
-        
+
         {message_type}\u241e{data}
 
     where {data} should be a \u241e delimited row.
@@ -54,11 +54,11 @@ def on_ready():
 @asyncio.coroutine
 def on_server_join():
     log.info(log_msg(['bot join', bot.user.name, bot.user.id, 'server', bot.server.id]))
-            
+
     yield from bot.send_message(bot.get_all_channels().next(), 'yo, we in there')
 
     log.info(log_msg(['sent_message', 'server_join', ctx.message.channel.name]))
-    
+
 @bot.command(pass_context=True)  
 @asyncio.coroutine
 def me(ctx, *text : str):
@@ -124,7 +124,7 @@ def quote(ctx, msg_id : str, *reply : str):
                                 ' '.join(reply)
                         )
         log.info(log_msg(['formatted_quote', ' '.join(reply)]))
-            
+
         yield from bot.say(output)
 
         log.info(log_msg(['sent_message', 'quote', ctx.message.channel.name]))
@@ -140,7 +140,7 @@ def quote(ctx, msg_id : str, *reply : str):
         log.info(log_msg(['sent_message', 
                           'invalid_quote_request', 
                           ctx.message.channel.name]))
- 
+
     # Clean up request regardless of success
     yield from bot.delete_message(ctx.message)
     log.info(log_msg(['deleted_request', msg_id]))
@@ -163,11 +163,8 @@ def misquote(ctx , target : discord.User):
         #    user = target
         #else:
         #    user = ctx.message.server.get_member(target)
-       
-        yield from bot.send_message(ctx.message.author,
-                                    ('What would you like to be '
-                                     + ' misattributed to ' 
-                                     + user.name + '?'))
+
+        yield from bot.send_message(ctx.message.author, ('What would you like to be ' + ' misattributed to ' + user.name + '?'))
 
         log.info(log_msg(['sent_message', 'misquote_dm_request', user.name]))
 
@@ -199,7 +196,7 @@ def misquote(ctx , target : discord.User):
                            reply.clean_content ]))
 #        else:
 #            yield from bot.say("Insufficient Access")
-        
+
     except discord.ext.commands.errors.BadArgument:
         log.warning(log_msg(['user_not_found',
                              target,
@@ -241,7 +238,7 @@ def frames(char : str, move : str, situ : str=""):
                       'Bison':'M.Bison',
                       'Bipson':'M.Bison',
                       'Dictator':'M.Bison'}
-                      
+
         directions = {'stand':'stand',
                       '5':'stand',
                       's':'stand',
@@ -272,7 +269,7 @@ def frames(char : str, move : str, situ : str=""):
                    'lp':'LP',
                    'light punch':'LP',
                    'jab':'LP'}
-        
+
         # Select Move
         if c in char_names.keys():
             char = char_names[c]
@@ -280,7 +277,7 @@ def frames(char : str, move : str, situ : str=""):
             char = c
         move_name = ' '.join([directions[d], buttons[b]])
         move = moves[char]['moves']['normal'][move_name]
-        
+
         # Responses for startup, active, recovery
         if s in ('block', 'hit'):
             if s == 'block':
@@ -288,27 +285,27 @@ def frames(char : str, move : str, situ : str=""):
 
             if s == 'hit':
                 frames = move['onHit']
-                
+
             if frames > 0:
                 yield from bot.say("{0}'s {1} is **+{2}** on {3}".format(
                     char,
                     move_name,
                     str(frames),
                     s))
-                
+
             elif frames == 0:
                 yield from bot.say("{0}'s {1} is **EVEN** on {3}".format(
                     char,
                     move_name,
                     s))
-                
+
             else:
                 yield from bot.say("{0}'s {1} is **{2}** on {3}".format(
                     char,
                     move_name,
                     str(frames),
                     s))
-                
+
         elif s in ('startup', 'recovery'):
             frames = move[s]
             yield from bot.say("{0}'s {1} has **{2}** frames of {3}.".format(
@@ -323,17 +320,17 @@ def frames(char : str, move : str, situ : str=""):
                                 char,
                                 move_name,
                                 str(frames)))
-                                
+
         # Responses for damage and stun
         elif s in ('damage', 'stun'):
             deeps = move[s]
-                
+
             yield from bot.say("{0}'s {1} does **{2}** {3}.".format(
                                 char,
                                 move_name,
                                 str(deeps),
                                 s))
-        
+
         # For nothing, or anything else, respond with summary of frame data
         else:
             # Dictionary of key names and nice names for printed results
@@ -345,18 +342,18 @@ def frames(char : str, move : str, situ : str=""):
                          'damage': ('Damage', 5),
                          'stun': ('Stun', 6)
                         }
-            
+
             output = "{0}'s {1} frame data:\n".format(char, move_name) 
-            
+
             # Add to output based on existing frame data
             for x in sorted(dataNames, key=lambda x : dataNames[x][1]):          
                 output += "{0}: **{1}**, ".format(dataNames[x][0], str(move[x]))
-            
+
             # Remove last character (extra comma)        
             output = output[:-2]
-            
+
             yield from bot.say(output)
-        
+
     except KeyError:
         log.warning(log_msg(['frame_data_not_found', 'character',  c]))
 
@@ -377,7 +374,7 @@ def frames(char : str, move : str, situ : str=""):
 
     except UnboundLocalError:
         log.warning(log_msg(['frame_data_not_found', 'situation',  s]))
-        
+
         yield from bot.say("Situation Not Found")
 
         log.info(log_msg(['sent_message',
@@ -390,4 +387,4 @@ if __name__=='__main__':
 
     log.info(log_msg(['bot_intialize']))
     bot.run(os.environ['DISCORD_QUOTEBOT_TOKEN'])
-    
+
