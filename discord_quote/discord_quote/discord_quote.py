@@ -105,12 +105,20 @@ def quote(ctx, msg_id : str, *reply : str):
                           msg_.clean_content]))
 
         # Replace triple back ticks with " so it doesn't break formatting when
-        # quoting quotes
-        clean_content = msg_.clean_content.replace('```', '|')
+        # quoting quotes and add preceding and following newlines
+        clean_content = '\n' + msg_.clean_content.replace('```', '|') + '\n'
 
         # Format output message
         if not reply:
-            output = '**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
+            # If we are quoting the quote-bot, we are either requoting something
+            # (if there is no reply)
+            #if msg_.author.name == 'quote-bot':
+#
+#            else:
+#                attributed_author = msg_.author.mention
+
+
+            output_name = '**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
                                 msg_.author.mention,
                                 msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                                 ctx.message.author.mention,
