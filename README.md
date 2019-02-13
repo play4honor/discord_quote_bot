@@ -2,8 +2,8 @@
 A bot that brings the "quote" feature to Discord text chat.
 
 To get different versions of this bot, you can pull from Docker Hub:
-- latest stable version: `docker pull cyzhang/discord_quote_bot:latest`.
-- development version: `docker pull cyzhang/discord_quote_bot:development`.
+- **latest** stable version: `docker pull cyzhang/discord_quote_bot:latest`.
+- **development** version: `docker pull cyzhang/discord_quote_bot:development`.
 
 # Quickstart
 
