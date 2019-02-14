@@ -59,7 +59,7 @@ def on_ready():
             log.info(log_msg([
                 'sent_message',
                 'channel_join', 
-                '{}.{}'.format(channel.server.name, channel.name)]
+                '\\'.join([channel.server.name, channel.name])]
                 )
             )
             yield from bot.send_message(channel, 'yo, we in there')
