@@ -64,16 +64,16 @@ def on_ready():
             )
             yield from bot.send_message(channel, 'yo, we in there')
 
-@bot.event
-@asyncio.coroutine
-def on_server_join(server):
-    log.info(log_msg(['bot join', bot.user.name, bot.user.id, 'server', bot.server.id]))
-
-    all_channels = server.get_all_channels()
-    for channels in all_channels:
-        yield from bot.send_message(channel, 'yo, we in there')
-
-    log.info(log_msg(['sent_message', 'server_join', ctx.message.channel.name]))
+#@bot.event
+#@asyncio.coroutine
+#def on_server_join(server):
+#    log.info(log_msg(['bot join', bot.user.name, bot.user.id, 'server', bot.server.id]))
+#
+#    all_channels = server.get_all_channels()
+#    for channels in all_channels:
+#        yield from bot.send_message(channel, 'yo, we in there')
+#
+#    log.info(log_msg(['sent_message', 'server_join', ctx.message.channel.name]))
 
 @bot.command(pass_context=True)
 @asyncio.coroutine
