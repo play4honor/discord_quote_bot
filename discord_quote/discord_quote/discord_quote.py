@@ -52,7 +52,7 @@ def on_ready():
 
 @bot.event
 @asyncio.coroutine
-def on_server_join():
+def on_server_join(server):
     log.info(log_msg(['bot join', bot.user.name, bot.user.id, 'server', bot.server.id]))
 
     all_channels = bot.get_all_channels()
@@ -120,7 +120,7 @@ def quote(ctx, msg_id : str, *reply : str):
 #                attributed_author = msg_.author.mention
 
 
-            output_name = '**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
+            output = '**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
                                 msg_.author.mention,
                                 msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                                 ctx.message.author.mention,
