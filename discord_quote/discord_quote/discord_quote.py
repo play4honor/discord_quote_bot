@@ -50,12 +50,26 @@ bot = commands.Bot(command_prefix='!', description=description)
 def on_ready():
     log.info(log_msg(['login', bot.user.name, bot.user.id]))
 
+    # Search all visibile channels and send a message letting users know that
+    # the bot is online. Only send in text channels that the bot has permission
+    # in.
+    for channel in bot.get_all_channels():
+        if (channel.permissions_for(channel.server.me).send_messages
+            and channel.type == discord.ChannelType.text):
+            log.info(log_msg([
+                'sent_message',
+                'channel_join', 
+                '{}.{}'.format(channel.server.name, channel.name)]
+                )
+            )
+            yield from bot.send_message(channel, 'yo, we in there')
+
 @bot.event
 @asyncio.coroutine
 def on_server_join(server):
     log.info(log_msg(['bot join', bot.user.name, bot.user.id, 'server', bot.server.id]))
 
-    all_channels = bot.get_all_channels()
+    all_channels = server.get_all_channels()
     for channels in all_channels:
         yield from bot.send_message(channel, 'yo, we in there')
 
