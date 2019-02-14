@@ -80,12 +80,12 @@ def on_ready():
 def me(ctx, *text : str):
     log.info(log_msg(['received_request',
                       'me',
-                      ctx.message.author.mention,
+                      ctx.message.author.name,
                       ctx.message.channel.name,
                       ' '.join(text)]))
 
     output = '_{0} {1}_'.format(
-                                ctx.message.author.mention,
+                                ctx.message.author.name,
                                 ' '.join(text)
                             )
 
@@ -105,7 +105,6 @@ def me(ctx, *text : str):
 def quote(ctx, msg_id : str, *reply : str):
     log.info(log_msg(['received_request',
                       'quote',
-                      ctx.message.author.mention,
                       ctx.message.channel.name,
                       msg_id]))
 
@@ -115,14 +114,23 @@ def quote(ctx, msg_id : str, *reply : str):
         log.info(log_msg(['retrieved_quote',
                           msg_id,
                           ctx.message.channel.name,
-                          msg_.author.mention,
+                          msg_.author.name,
                           msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                          ctx.message.author.mention,
+                          ctx.message.author.name,
                           msg_.clean_content]))
+
+        quote = False
+        author = msg_.author.name
+
+        # If previously quoted, find the original author
+        if msg_.author.name == bot.user.name:
+            log.info(log_msg(['quoting_another_quote', msg_id]))
+            quote = True
+            author = re.search("^\*\*(.*)\[.*\]\ssaid:\*\*", msg_.clean_content).group(1)
 
         # Replace triple back ticks with " so it doesn't break formatting when
         # quoting quotes and add preceding and following newlines
-        clean_content = '\n' + msg_.clean_content.replace('```', '|') + '\n'
+        clean_content = '\n' + msg_.clean_content.replace('```', '').replace('\n','\n    ') + '\n'
 
         # Format output message
         if not reply:
@@ -135,17 +143,17 @@ def quote(ctx, msg_id : str, *reply : str):
 
 
             output = '**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
-                                msg_.author.mention,
+                                msg_.author.name,
                                 msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                                ctx.message.author.mention,
+                                ctx.message.author.name,
                                 clean_content
                         )
         else:
             output = '**{0} [{1}] said:** ```{2}``` **{3}:** {4}'.format(
-                                msg_.author.mention,
+                                msg_.author.name,
                                 msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                                 clean_content,
-                                ctx.message.author.mention,
+                                ctx.message.author.name,
                                 ' '.join(reply)
                         )
         log.info(log_msg(['formatted_quote', ' '.join(reply)]))
@@ -161,7 +169,7 @@ def quote(ctx, msg_id : str, *reply : str):
         yield from bot.say(("Quote not found in this channel ('{0}' "
                             + "requested by "
                             + "{1})").format(msg_id,
-                                             ctx.message.author.mention))
+                                             ctx.message.author.name))
         log.info(log_msg(['sent_message',
                           'invalid_quote_request',
                           ctx.message.channel.name]))
@@ -176,9 +184,9 @@ def misquote(ctx , target : discord.User):
 
     log.info(log_msg(['received_request',
                       'misquote',
-                      ctx.message.author.mention,
+                      ctx.message.author.name,
                       ctx.message.channel.name,
-                      target.mention]))
+                      target.name]))
 
     try:
 #        if ctx.message.author.permissions_in(ctx.message.channel.name).administrator:
@@ -191,7 +199,7 @@ def misquote(ctx , target : discord.User):
 
         yield from bot.send_message(ctx.message.author, ('What would you like to be ' + ' misattributed to ' + user.name + '?'))
 
-        log.info(log_msg(['sent_message', 'misquote_dm_request', user.mention]))
+        log.info(log_msg(['sent_message', 'misquote_dm_request', user.name]))
 
         def priv(msg):
             return msg.channel.is_private == True
@@ -202,21 +210,21 @@ def misquote(ctx , target : discord.User):
 
         log.info(log_msg(['received_request',
                           'misquote_response',
-                          ctx.message.author.mention,
+                          ctx.message.author.name,
                           ctx.message.channel.name,
                           reply.clean_content]))
 
         faketime = datetime.datetime.now() - datetime.timedelta(minutes=5)
 
         yield from bot.say('**{0} [{1}] definitely said:** ```{2}```'.format(
-                            user.mention,
+                            user.name,
                             faketime.strftime("%Y-%m-%d %H:%M:%S"),
                             reply.clean_content
                             ))
 
         log.info(log_msg(['sent_message',
                           'misquote',
-                           user.mention,
+                           user.name,
                            faketime.strftime('%Y-%m-%d %H:%M:%S'),
                            reply.clean_content ]))
 #        else:
@@ -225,7 +233,7 @@ def misquote(ctx , target : discord.User):
     except discord.ext.commands.errors.BadArgument:
         log.warning(log_msg(['user_not_found',
                              target,
-                             ctx.message.author.mention]))
+                             ctx.message.author.name]))
 
         yield from bot.say("User not found")
 
