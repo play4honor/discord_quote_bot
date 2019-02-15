@@ -115,6 +115,7 @@ def quote(ctx, msg_id : str, *reply : str):
                           msg_id,
                           ctx.message.channel.name,
                           msg_.author.name,
+
                           msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                           ctx.message.author.name,
                           msg_.clean_content]))
@@ -124,9 +125,14 @@ def quote(ctx, msg_id : str, *reply : str):
 
         # If previously quoted, find the original author
         if msg_.author.name == bot.user.name:
-            log.info(log_msg(['quoting_another_quote', msg_id]))
             quote = True
-            author = re.search("^\*\*(.*)\[.*\]\ssaid:\*\*", msg_.clean_content).group(1)
+
+            # Run a regex search for the author name and if you can find it
+            # re-attribute. If you can't find it, it'll just be the bot's name
+            _author = re.search("^\*\*(.*)\[.*\]\ssaid:\*\*", msg_.clean_content)
+            if _author:
+                author = _author.group(1)
+                log.info(log_msg(['reattributing', msg_id, author]))
 
         # Replace triple back ticks with " so it doesn't break formatting when
         # quoting quotes and add preceding and following newlines
@@ -143,14 +149,14 @@ def quote(ctx, msg_id : str, *reply : str):
 
 
             output = '**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
-                                msg_.author.name,
+                                author,
                                 msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                                 ctx.message.author.name,
                                 clean_content
                         )
         else:
             output = '**{0} [{1}] said:** ```{2}``` **{3}:** {4}'.format(
-                                msg_.author.name,
+                                author,
                                 msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                                 clean_content,
                                 ctx.message.author.name,
