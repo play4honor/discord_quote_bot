@@ -50,28 +50,42 @@ bot = commands.Bot(command_prefix='!', description=description)
 def on_ready():
     log.info(log_msg(['login', bot.user.name, bot.user.id]))
 
-@bot.event
-@asyncio.coroutine
-def on_server_join():
-    log.info(log_msg(['bot join', bot.user.name, bot.user.id, 'server', bot.server.id]))
+    # Search all visibile channels and send a message letting users know that
+    # the bot is online. Only send in text channels that the bot has permission
+    # in.
+    for channel in bot.get_all_channels():
+        if (channel.permissions_for(channel.server.me).send_messages
+            and channel.type == discord.ChannelType.text):
+            log.info(log_msg([
+                'sent_message',
+                'channel_join', 
+                '\\'.join([channel.server.name, channel.name])]
+                )
+            )
+            yield from bot.send_message(channel, 'yo, we in there')
 
-    all_channels = bot.get_all_channels()
-    for channels in all_channels:
-        yield from bot.send_message(channel, 'yo, we in there')
-
-    log.info(log_msg(['sent_message', 'server_join', ctx.message.channel.name]))
+#@bot.event
+#@asyncio.coroutine
+#def on_server_join(server):
+#    log.info(log_msg(['bot join', bot.user.name, bot.user.id, 'server', bot.server.id]))
+#
+#    all_channels = server.get_all_channels()
+#    for channels in all_channels:
+#        yield from bot.send_message(channel, 'yo, we in there')
+#
+#    log.info(log_msg(['sent_message', 'server_join', ctx.message.channel.name]))
 
 @bot.command(pass_context=True)
 @asyncio.coroutine
 def me(ctx, *text : str):
     log.info(log_msg(['received_request',
                       'me',
-                      ctx.message.author.mention,
+                      ctx.message.author.name,
                       ctx.message.channel.name,
                       ' '.join(text)]))
 
     output = '_{0} {1}_'.format(
-                                ctx.message.author.mention,
+                                ctx.message.author.name,
                                 ' '.join(text)
                             )
 
@@ -91,7 +105,6 @@ def me(ctx, *text : str):
 def quote(ctx, msg_id : str, *reply : str):
     log.info(log_msg(['received_request',
                       'quote',
-                      ctx.message.author.mention,
                       ctx.message.channel.name,
                       msg_id]))
 
@@ -101,39 +114,77 @@ def quote(ctx, msg_id : str, *reply : str):
         log.info(log_msg(['retrieved_quote',
                           msg_id,
                           ctx.message.channel.name,
-                          msg_.author.mention,
+                          msg_.author.name,
+
                           msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                          ctx.message.author.mention,
+                          ctx.message.author.name,
                           msg_.clean_content]))
+
+        quote = False
+        author = msg_.author.name
+
+        # If previously quoted, find the original author
+        if msg_.author.name == bot.user.name:
+            quote = True
+
+            # Run a regex search for the author name and if you can find it
+            # re-attribute. If you can't find it, it'll just be the bot's name
+            _author = re.search("^\*\*(.*)\[.*\]\ssaid:\*\*", msg_.clean_content)
+            if _author:
+                author = _author.group(1)
+                log.info(log_msg(['reattributing', msg_id, author]))
 
         # Replace triple back ticks with " so it doesn't break formatting when
         # quoting quotes and add preceding and following newlines
-        clean_content = '\n' + msg_.clean_content.replace('```', '|') + '\n'
+        #clean_content = '\n' + msg_.clean_content.replace('```', '').replace('\n','\n    ') + '\n'
+        clean_content = msg_.clean_content
 
-        # Format output message
-        if not reply:
-            # If we are quoting the quote-bot, we are either requoting something
-            # (if there is no reply)
-            #if msg_.author.name == 'quote-bot':
-#
-#            else:
-#                attributed_author = msg_.author.mention
-
-
-            output_name = '**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
-                                msg_.author.mention,
+        # Format output message, handlign replies and quotes
+        if not reply and not quote:
+            log.info(log_msg(['formatting_quote', 'noreply|noquote']))
+            # Simplest case, just quoting a non-quotebot message, with no reply
+            output = '_heard_\n**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
+                                author,
                                 msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                                ctx.message.author.mention,
+                                ctx.message.author.name,
                                 clean_content
                         )
-        else:
-            output = '**{0} [{1}] said:** ```{2}``` **{3}:** {4}'.format(
-                                msg_.author.mention,
-                                msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+        elif not reply and quote:
+            log.info(log_msg(['formatting_quote', 'noreply|quote']))
+
+            # Find the original quoter
+            _quoter = re.search("__via.*?__", msg_.content)
+            if _quoter:
+                # Replace the original quoter with the new quoter
+                output = {0}.replace(
+                    _quoter.group(0),
+                    "__via {0}__".format(ctx.message.author.name)
+                )
+            else:
+                # If the regex breaks, just forward the old message.
+                output = msg_.content
+        elif reply and quote:
+            log.info(log_msg(['formatting_quote', 'reply|quote']))
+            # Reply to a quotebot quote with a reply
+            output = '{0}\n**{1} [{2}] responded:** {3}'.format(
                                 clean_content,
-                                ctx.message.author.mention,
+                                ctx.message.author.name,
+                                ctx.message.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                                 ' '.join(reply)
                         )
+        else:
+            log.info(log_msg(['formatting_quote', 'reply|quote']))
+            output = (
+                '_heard_\n**{0} [{1}] said:** ```{2}```'
+                + '**{3} [{4}] responded:** {5}'
+            ).format(
+                     author,
+                     msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                     clean_content,
+                     ctx.message.author.name,
+                     ctx.message.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                     ' '.join(reply)
+            )
         log.info(log_msg(['formatted_quote', ' '.join(reply)]))
 
         yield from bot.say(output)
@@ -147,7 +198,7 @@ def quote(ctx, msg_id : str, *reply : str):
         yield from bot.say(("Quote not found in this channel ('{0}' "
                             + "requested by "
                             + "{1})").format(msg_id,
-                                             ctx.message.author.mention))
+                                             ctx.message.author.name))
         log.info(log_msg(['sent_message',
                           'invalid_quote_request',
                           ctx.message.channel.name]))
@@ -162,9 +213,9 @@ def misquote(ctx , target : discord.User):
 
     log.info(log_msg(['received_request',
                       'misquote',
-                      ctx.message.author.mention,
+                      ctx.message.author.name,
                       ctx.message.channel.name,
-                      target.mention]))
+                      target.name]))
 
     try:
 #        if ctx.message.author.permissions_in(ctx.message.channel.name).administrator:
@@ -177,7 +228,7 @@ def misquote(ctx , target : discord.User):
 
         yield from bot.send_message(ctx.message.author, ('What would you like to be ' + ' misattributed to ' + user.name + '?'))
 
-        log.info(log_msg(['sent_message', 'misquote_dm_request', user.mention]))
+        log.info(log_msg(['sent_message', 'misquote_dm_request', user.name]))
 
         def priv(msg):
             return msg.channel.is_private == True
@@ -188,21 +239,21 @@ def misquote(ctx , target : discord.User):
 
         log.info(log_msg(['received_request',
                           'misquote_response',
-                          ctx.message.author.mention,
+                          ctx.message.author.name,
                           ctx.message.channel.name,
                           reply.clean_content]))
 
         faketime = datetime.datetime.now() - datetime.timedelta(minutes=5)
 
         yield from bot.say('**{0} [{1}] definitely said:** ```{2}```'.format(
-                            user.mention,
+                            user.name,
                             faketime.strftime("%Y-%m-%d %H:%M:%S"),
                             reply.clean_content
                             ))
 
         log.info(log_msg(['sent_message',
                           'misquote',
-                           user.mention,
+                           user.name,
                            faketime.strftime('%Y-%m-%d %H:%M:%S'),
                            reply.clean_content ]))
 #        else:
@@ -211,7 +262,7 @@ def misquote(ctx , target : discord.User):
     except discord.ext.commands.errors.BadArgument:
         log.warning(log_msg(['user_not_found',
                              target,
-                             ctx.message.author.mention]))
+                             ctx.message.author.name]))
 
         yield from bot.say("User not found")
 
