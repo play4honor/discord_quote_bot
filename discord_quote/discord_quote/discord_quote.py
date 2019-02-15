@@ -136,32 +136,55 @@ def quote(ctx, msg_id : str, *reply : str):
 
         # Replace triple back ticks with " so it doesn't break formatting when
         # quoting quotes and add preceding and following newlines
-        clean_content = '\n' + msg_.clean_content.replace('```', '').replace('\n','\n    ') + '\n'
+        #clean_content = '\n' + msg_.clean_content.replace('```', '').replace('\n','\n    ') + '\n'
+        clean_content = msg_.clean_content
 
-        # Format output message
-        if not reply:
-            # If we are quoting the quote-bot, we are either requoting something
-            # (if there is no reply)
-            #if msg_.author.name == 'quote-bot':
-#
-#            else:
-#                attributed_author = msg_.author.mention
-
-
-            output = '**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
+        # Format output message, handlign replies and quotes
+        if not reply and not quote:
+            log.info(log_msg(['formatting_quote', 'noreply|noquote']))
+            # Simplest case, just quoting a non-quotebot message, with no reply
+            output = '_heard_\n**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
                                 author,
                                 msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                                 ctx.message.author.name,
                                 clean_content
                         )
-        else:
-            output = '**{0} [{1}] said:** ```{2}``` **{3}:** {4}'.format(
-                                author,
-                                msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+        elif not reply and quote:
+            log.info(log_msg(['formatting_quote', 'noreply|quote']))
+
+            # Find the original quoter
+            _quoter = re.search("__via.*?__", msg_.content)
+            if _quoter:
+                # Replace the original quoter with the new quoter
+                output = {0}.replace(
+                    _quoter.group(0),
+                    "__via {0}__".format(ctx.message.author.name)
+                )
+            else:
+                # If the regex breaks, just forward the old message.
+                output = msg_.content
+        elif reply and quote:
+            log.info(log_msg(['formatting_quote', 'reply|quote']))
+            # Reply to a quotebot quote with a reply
+            output = '{0}\n**{1} [{2}] responded:** {3}'.format(
                                 clean_content,
                                 ctx.message.author.name,
+                                ctx.message.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                                 ' '.join(reply)
                         )
+        else:
+            log.info(log_msg(['formatting_quote', 'reply|quote']))
+            output = (
+                '_heard_\n**{0} [{1}] said:** ```{2}```'
+                + '**{3} [{4}] responded:** {5}'
+            ).format(
+                     author,
+                     msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                     clean_content,
+                     ctx.message.author.name,
+                     ctx.message.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                     ' '.join(reply)
+            )
         log.info(log_msg(['formatted_quote', ' '.join(reply)]))
 
         yield from bot.say(output)
