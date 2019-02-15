@@ -9,9 +9,9 @@ A docker image for this bot is available on Docker Hub: `docker pull cyzhang/dis
 2. Pull the image: `docker pull cyzhang/discord_quote_bot`
 3. Set your authentication token as `DISCORD_QUOTEBOT_TOKEN` in your environment 
 
-```
-export DISCORD_QUOTEBOT_TOKEN=[token]
-```
+    ```
+    export DISCORD_QUOTEBOT_TOKEN=[token]
+    ```
 
 4. Run the image: 
 
