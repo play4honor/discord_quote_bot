@@ -15,33 +15,33 @@ A docker image for this bot is available on Docker Hub: `docker pull cyzhang/dis
 
 4. Run the image: 
 
-```
-sudo docker run --restart unless-stopped \
--d -e DISCORD_QUOTEBOT_TOKEN=$DISCORD_QUOTEBOT_TOKEN \
-cyzhang/discord_quote_bot 
-```
+    ```
+    sudo docker run --restart unless-stopped \
+    -d -e DISCORD_QUOTEBOT_TOKEN=$DISCORD_QUOTEBOT_TOKEN \
+    cyzhang/discord_quote_bot 
+    ```
 
 # Additional Details
 
-- If you're using WatchTower, you'll also want to run:
+- If you're using WatchTower, you'll also want to run to keep both the production and development quote bot running:
 
-```
-docker run -d \
-  --name watchtower \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  v2tec/watchtower --interval 10 cyzhang/discord_quote_bot cyzhang/discord_quote_bot:development
-```
+    ```
+    docker run -d \
+      --name watchtower \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      v2tec/watchtower --interval 10 cyzhang/discord_quote_bot cyzhang/discord_quote_bot:development
+    ```
 
 - If you're running the development branch:
     - Pull the development image: `docker pull cyzhang/discord_quote_bot:development`
     - Set your authentication token as `DISCORD_QUOTEBOT_DEV_TOKEN` in your environment
-    - Use the alternate token
+    - Use the alternate token when starting up the quotebot
     
-```
-sudo docker run --restart unless-stopped \
--d -e DISCORD_QUOTEBOT_TOKEN=$DISCORD_QUOTEBOT_DEV_TOKEN \
-cyzhang/discord_quote_bot 
-```
+    ```
+    sudo docker run --restart unless-stopped \
+    -d -e DISCORD_QUOTEBOT_TOKEN=$DISCORD_QUOTEBOT_DEV_TOKEN \
+    cyzhang/discord_quote_bot 
+    ```
 
     
 # Additional Notes:
