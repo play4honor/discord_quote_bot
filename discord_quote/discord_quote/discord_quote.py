@@ -7,6 +7,7 @@ import re
 import logging
 import sys
 import os
+import arrow
 
 # Configure logging
 log = logging.getLogger(__name__)
@@ -115,13 +116,18 @@ def quote(ctx, msg_id : str, *reply : str):
                           msg_id,
                           ctx.message.channel.name,
                           msg_.author.name,
-
                           msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                           ctx.message.author.name,
                           msg_.clean_content]))
 
         quote = False
         author = msg_.author.name
+        message_time = msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        jump_url = 'https://discordapp.com/channels/{0}/{1}/{2}'.format(
+                msg_.channel.server.id,
+                msg_.channel.id,
+                msg_.id
+            )
 
         # If previously quoted, find the original author
         if msg_.author.name == bot.user.name:
@@ -129,25 +135,26 @@ def quote(ctx, msg_id : str, *reply : str):
 
             # Run a regex search for the author name and if you can find it
             # re-attribute. If you can't find it, it'll just be the bot's name
-            _author = re.search("^\*\*(.*)\[.*\]\ssaid:\*\*", msg_.clean_content)
+            _author = re.search("^\*\*(.*)\[(.*)\]\ssaid:\*\*", msg_.clean_content)
             if _author:
                 author = _author.group(1)
-                log.info(log_msg(['reattributing', msg_id, author]))
+                log.info(log_msg(['found_original_author', msg_id, author]))
+                message_time = _author.group(2)
+                log.info(log_msg(['found_original_timestamp', msg_id, message_time]))
 
-        # Replace triple back ticks with " so it doesn't break formatting when
-        # quoting quotes and add preceding and following newlines
-        #clean_content = '\n' + msg_.clean_content.replace('```', '').replace('\n','\n    ') + '\n'
+        relative_time = arrow.get(ctx.message.timestamp).humanize(arrow.get(message_time))
         clean_content = msg_.clean_content
 
-        # Format output message, handlign replies and quotes
+        # Format output message, handling replies and quotes
         if not reply and not quote:
             log.info(log_msg(['formatting_quote', 'noreply|noquote']))
             # Simplest case, just quoting a non-quotebot message, with no reply
-            output = '_heard_\n**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
+            output = '_heard_\n**{0} [[{1}]({4})] said:** _via {2}_ ```{3}```'.format(
                                 author,
                                 msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                                 ctx.message.author.name,
-                                clean_content
+                                clean_content,
+                                jump_url
                         )
         elif not reply and quote:
             log.info(log_msg(['formatting_quote', 'noreply|quote']))
@@ -165,25 +172,39 @@ def quote(ctx, msg_id : str, *reply : str):
                 output = msg_.content
         elif reply and quote:
             log.info(log_msg(['formatting_quote', 'reply|quote']))
+
+            # Detect Last Response so we can hyperlink
+            _last_response = re.search(
+                    "\*\*[A-Za-z0-9]*\s(\[[A-Za-z0-9\s]*\])\sresponded",
+                    msg_.content
+            )
+
+            if _last_response:
+                clean_content = clean_content.replace(
+                        _last_response.group(1),
+                        "[{0}({1})]".format(_last_response.group(1), jump_url)
+                )
+
             # Reply to a quotebot quote with a reply
             output = '{0}\n**{1} [{2}] responded:** {3}'.format(
                                 clean_content,
                                 ctx.message.author.name,
-                                ctx.message.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                                relative_time,
                                 ' '.join(reply)
                         )
         else:
             log.info(log_msg(['formatting_quote', 'reply|quote']))
             output = (
-                '_heard_\n**{0} [{1}] said:** ```{2}```'
+                '_heard_\n**{0} [[{1}]({6})] said:** ```{2}```'
                 + '**{3} [{4}] responded:** {5}'
             ).format(
                      author,
                      msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                      clean_content,
                      ctx.message.author.name,
-                     ctx.message.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                     ' '.join(reply)
+                     relative_time,
+                     ' '.join(reply),
+                     jump_url
             )
         log.info(log_msg(['formatted_quote', ' '.join(reply)]))
 
