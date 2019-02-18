@@ -123,19 +123,18 @@ async def _get_hook(ctx):
     return(hook)
 
 @bot.command(pass_context=True)
-@asyncio.coroutine
-def quote(ctx, msg_id : str, *reply : str):
+async def quote(ctx, msg_id : str, *reply : str):
     log.info(log_msg(['received_request',
                       'quote',
                       ctx.message.channel.name,
                       msg_id]))
 
     try:
-        msg_ = yield from ctx.get_message(msg_id)
+        msg_ = await ctx.get_message(msg_id)
 
         # We need custom handling, so create a Webhook Adapter from our hook
-        hook = yield from _get_hook(ctx)
-        yield from hook._adapter.execute_webhook(
+        hook = await _get_hook(ctx)
+        await hook._adapter.execute_webhook(
             payload={"content":"[yo](https://www.google.com)"}
         )
         log.info(log_msg(['retrieved_quote',
@@ -234,7 +233,7 @@ def quote(ctx, msg_id : str, *reply : str):
             )
         log.info(log_msg(['formatted_quote', ' '.join(reply)]))
 
-        yield from ctx.channel.send(output)
+        await ctx.channel.send(output)
 
         log.info(log_msg(['sent_message', 'quote', ctx.message.channel.name]))
 
@@ -242,7 +241,7 @@ def quote(ctx, msg_id : str, *reply : str):
         log.warning(['msg_not_found', msg_id, ctx.message.author.mention])
 
         # Return error if message not found.
-        yield from ctx.channel.send(("Quote not found in this channel ('{0}' "
+        await ctx.channel.send(("Quote not found in this channel ('{0}' "
                             + "requested by "
                             + "{1})").format(msg_id,
                                              ctx.message.author.name))
@@ -251,7 +250,7 @@ def quote(ctx, msg_id : str, *reply : str):
                           ctx.message.channel.name]))
 
     # Clean up request regardless of success
-    yield from ctx.message.delete_message(ctx.message)
+    await ctx.message.delete()
     log.info(log_msg(['deleted_request', msg_id]))
 
 @bot.command(pass_context=True)
