@@ -104,7 +104,7 @@ def me(ctx, *text : str):
 # Get a WebHook
 async def _get_hook(ctx):
     # Check for 'Manage WebHook' permission and return if missing permission
-    if not ctx.message.channel.permissions_for(ctx.channel.guild.me).manage_webhooks:
+    if not ctx.channel.permissions_for(ctx.guild.me).manage_webhooks:
         return
 
     # Figure out the appropriate webhook
@@ -123,39 +123,39 @@ async def _get_hook(ctx):
 
     return(hook)
 
-@bot.command(pass_context=True)
+@bot.command()
 async def quote(ctx, msg_id : str, *reply : str):
     log.info(log_msg(['received_request',
                       'quote',
                       ctx.message.channel.name,
                       msg_id]))
 
-    # Get, or create a webhook
-    hook = await _get_hook(ctx)
-
-    # Use WebHooks if possible
-    if hook:
-    # We need custom handling, so create a Webhook Adapter from our hook
-        await hook._adapter.execute_webhook(
-            payload={"content":"[yo](https://www.google.com)"}
-        )
-        payload = await webhook_quote(ctx, msg_id, *reply)
-        await hook._adapter.execute_webhook(
-            payload={"content":payload}
-        )
-    else:
-        await bot_quote(ctx, msg_id, *reply)
     try:
+        # Retrieve the message
+        msg_ = await ctx.channel.get_message(msg_id)
+        log.info(log_msg(['retrieved_quote',
+                      msg_id,
+                      ctx.message.channel.name,
+                      msg_.author.name,
+                      msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                      ctx.message.author.name,
+                      msg_.clean_content]))
+
         # Get, or create a webhook
         hook = await _get_hook(ctx)
 
         # Use WebHooks if possible
         if hook:
-        # We need custom handling, so create a Webhook Adapter from our hook
+            payload = await webhook_quote(ctx, msg_id, msg_, *reply)
+
+            # We need custom handling, so create a Webhook Adapter from our hook
             await hook._adapter.execute_webhook(
-                payload={"content":"[yo](https://www.google.com)"}
+                payload={
+                    "content":payload,
+                    "username" : ctx.guild.me.name,
+                    "avatar_url": ctx.guild.me.avatar_url
+                }
             )
-            await webhook_quote(ctx, msg_id, *reply)
         else:
             await bot_quote(ctx, msg_id, *reply)
     except discord.errors.HTTPException:
@@ -174,19 +174,9 @@ async def quote(ctx, msg_id : str, *reply : str):
     await ctx.message.delete()
     log.info(log_msg(['deleted_request', msg_id]))
 
-async def webhook_quote(ctx, msg_id : str, *reply: str):
+async def webhook_quote(ctx, msg_id : str, msg_, *reply: str):
     # This is the new way to quote things. This is the default unless you take
     # away the 'Manage Webhooks' permission from the bot.
-
-    # Retrieve the message
-    msg_ = await ctx.channel.get_message(msg_id)
-    log.info(log_msg(['retrieved_quote',
-                      msg_id,
-                      ctx.message.channel.name,
-                      msg_.author.name,
-                      msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                      ctx.message.author.name,
-                      msg_.clean_content]))
 
     quote = False
     author = msg_.author.name
@@ -297,7 +287,6 @@ async def bot_quote(ctx, msg_id : str, *reply : str):
     quote = False
     author = msg_.author.name
     message_time = msg_.created_at.strftime("%Y-%m-%d %H:%M:%S")
-    jump_url = msg_.jump_url
 
     # If previously quoted, find the original author
     if msg_.author.name == bot.user.name:
@@ -312,19 +301,17 @@ async def bot_quote(ctx, msg_id : str, *reply : str):
             message_time = _author.group(2)
             log.info(log_msg(['found_original_timestamp', msg_id, message_time]))
 
-    relative_time = arrow.get(ctx.message.created_at).humanize(arrow.get(message_time))
     clean_content = msg_.clean_content
 
     # Format output message, handling replies and quotes
     if not reply and not quote:
         log.info(log_msg(['formatting_quote', 'noreply|noquote']))
         # Simplest case, just quoting a non-quotebot message, with no reply
-        output = '_heard_\n**{0} [[{1}](<{4}>)] said:** _via {2}_ ```{3}```'.format(
+        output = '_heard_\n**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
                             author,
                             msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                             ctx.message.author.name,
-                            clean_content,
-                            jump_url
+                            clean_content
                     )
     elif not reply and quote:
         log.info(log_msg(['formatting_quote', 'noreply|quote']))
@@ -359,22 +346,22 @@ async def bot_quote(ctx, msg_id : str, *reply : str):
         output = '{0}\n**{1} [{2}] responded:** {3}'.format(
                             clean_content,
                             ctx.message.author.name,
-                            relative_time,
+                            ctx.message.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                             ' '.join(reply)
                     )
     else:
         log.info(log_msg(['formatting_quote', 'reply|quote']))
+
         output = (
-            '_heard_\n**{0} [[{1}](<{6}>)] said:** ```{2}```'
+            '_heard_\n**{0} [{1}] said:** ```{2}```'
             + '**{3} [{4}] responded:** {5}'
         ).format(
                  author,
                  msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                  clean_content,
                  ctx.message.author.name,
-                 relative_time,
-                 ' '.join(reply),
-                 jump_url
+                 ctx.message.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                 ' '.join(reply)
         )
     log.info(log_msg(['formatted_quote', ' '.join(reply)]))
 
