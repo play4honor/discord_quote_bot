@@ -28,9 +28,9 @@ def log_msg(data):
     """
     Accepts a list of data elements, removes the  u'\u241e'character
     from each element, and then joins the elements using u'\u241e'.
-    
+
     Messages should be constructed in the format:
-        
+
         {message_type}\u241e{data}
 
     where {data} should be a \u241e delimited row.
@@ -50,26 +50,42 @@ bot = commands.Bot(command_prefix='!', description=description)
 def on_ready():
     log.info(log_msg(['login', bot.user.name, bot.user.id]))
 
-@bot.event
-@asyncio.coroutine
-def on_server_join():
-    log.info(log_msg(['bot join', bot.user.name, bot.user.id, 'server', bot.server.id]))
-            
-    yield from bot.send_message(bot.get_all_channels().next(), 'yo, we in there')
+    # Search all visibile channels and send a message letting users know that
+    # the bot is online. Only send in text channels that the bot has permission
+    # in.
+    for channel in bot.get_all_channels():
+        if (channel.permissions_for(channel.server.me).send_messages
+            and channel.type == discord.ChannelType.text):
+            log.info(log_msg([
+                'sent_message',
+                'channel_join', 
+                '\\'.join([channel.server.name, channel.name])]
+                )
+            )
+            yield from bot.send_message(channel, 'yo, we in there')
 
-    log.info(log_msg(['sent_message', 'server_join', ctx.message.channel.name]))
-    
-@bot.command(pass_context=True)  
+#@bot.event
+#@asyncio.coroutine
+#def on_server_join(server):
+#    log.info(log_msg(['bot join', bot.user.name, bot.user.id, 'server', bot.server.id]))
+#
+#    all_channels = server.get_all_channels()
+#    for channels in all_channels:
+#        yield from bot.send_message(channel, 'yo, we in there')
+#
+#    log.info(log_msg(['sent_message', 'server_join', ctx.message.channel.name]))
+
+@bot.command(pass_context=True)
 @asyncio.coroutine
 def me(ctx, *text : str):
-    log.info(log_msg(['received_request', 
+    log.info(log_msg(['received_request',
                       'me',
-                      ctx.message.author.name, 
+                      ctx.message.author.name,
                       ctx.message.channel.name,
                       ' '.join(text)]))
 
     output = '_{0} {1}_'.format(
-                                ctx.message.author.name, 
+                                ctx.message.author.name,
                                 ' '.join(text)
                             )
 
@@ -84,68 +100,114 @@ def me(ctx, *text : str):
     log.info(log_msg(['deleted_request', ctx.message.id]))
 
 
-@bot.command(pass_context=True)  
+@bot.command(pass_context=True)
 @asyncio.coroutine
 def quote(ctx, msg_id : str, *reply : str):
-    log.info(log_msg(['received_request', 
+    log.info(log_msg(['received_request',
                       'quote',
-                      ctx.message.author.name, 
                       ctx.message.channel.name,
                       msg_id]))
+
     try:
         msg_ = yield from bot.get_message(ctx.message.channel, msg_id)
 
-        log.info(log_msg(['retrieved_quote', 
-                          msg_id, 
+        log.info(log_msg(['retrieved_quote',
+                          msg_id,
                           ctx.message.channel.name,
-                          msg_.author.name, 
-                          msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 
-                          ctx.message.author.name, 
+                          msg_.author.name,
+
+                          msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                          ctx.message.author.name,
                           msg_.clean_content]))
 
-        # Replace triple back ticks with " so it doesn't break formatting when
-        # quoting quotes
-        clean_content = msg_.clean_content.replace('```', '|')
+        quote = False
+        author = msg_.author.name
 
-        # Format output message
-        if not reply:
-            output = '**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
-                                msg_.author.name, 
-                                msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 
-                                ctx.message.author.name, 
+        # If previously quoted, find the original author
+        if msg_.author.name == bot.user.name:
+            quote = True
+
+            # Run a regex search for the author name and if you can find it
+            # re-attribute. If you can't find it, it'll just be the bot's name
+            _author = re.search("^\*\*(.*)\[.*\]\ssaid:\*\*", msg_.clean_content)
+            if _author:
+                author = _author.group(1)
+                log.info(log_msg(['reattributing', msg_id, author]))
+
+        # Replace triple back ticks with " so it doesn't break formatting when
+        # quoting quotes and add preceding and following newlines
+        #clean_content = '\n' + msg_.clean_content.replace('```', '').replace('\n','\n    ') + '\n'
+        clean_content = msg_.clean_content
+
+        # Format output message, handlign replies and quotes
+        if not reply and not quote:
+            log.info(log_msg(['formatting_quote', 'noreply|noquote']))
+            # Simplest case, just quoting a non-quotebot message, with no reply
+            output = '_heard_\n**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
+                                author,
+                                msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                                ctx.message.author.name,
                                 clean_content
                         )
-        else:
-            output = '**{0} [{1}] said:** ```{2}``` **{3}:** {4}'.format(
-                                msg_.author.name, 
-                                msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                                clean_content, 
-                                ctx.message.author.name, 
+        elif not reply and quote:
+            log.info(log_msg(['formatting_quote', 'noreply|quote']))
+
+            # Find the original quoter
+            _quoter = re.search("__via.*?__", msg_.content)
+            if _quoter:
+                # Replace the original quoter with the new quoter
+                output = {0}.replace(
+                    _quoter.group(0),
+                    "__via {0}__".format(ctx.message.author.name)
+                )
+            else:
+                # If the regex breaks, just forward the old message.
+                output = msg_.content
+        elif reply and quote:
+            log.info(log_msg(['formatting_quote', 'reply|quote']))
+            # Reply to a quotebot quote with a reply
+            output = '{0}\n**{1} [{2}] responded:** {3}'.format(
+                                clean_content,
+                                ctx.message.author.name,
+                                ctx.message.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                                 ' '.join(reply)
                         )
+        else:
+            log.info(log_msg(['formatting_quote', 'reply|quote']))
+            output = (
+                '_heard_\n**{0} [{1}] said:** ```{2}```'
+                + '**{3} [{4}] responded:** {5}'
+            ).format(
+                     author,
+                     msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                     clean_content,
+                     ctx.message.author.name,
+                     ctx.message.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                     ' '.join(reply)
+            )
         log.info(log_msg(['formatted_quote', ' '.join(reply)]))
-            
+
         yield from bot.say(output)
 
         log.info(log_msg(['sent_message', 'quote', ctx.message.channel.name]))
 
     except discord.errors.HTTPException:
-        log.warning(['msg_not_found', msg_id, ctx.message.author.name])
+        log.warning(['msg_not_found', msg_id, ctx.message.author.mention])
 
         # Return error if message not found.
         yield from bot.say(("Quote not found in this channel ('{0}' "
                             + "requested by "
                             + "{1})").format(msg_id,
                                              ctx.message.author.name))
-        log.info(log_msg(['sent_message', 
-                          'invalid_quote_request', 
+        log.info(log_msg(['sent_message',
+                          'invalid_quote_request',
                           ctx.message.channel.name]))
- 
+
     # Clean up request regardless of success
     yield from bot.delete_message(ctx.message)
     log.info(log_msg(['deleted_request', msg_id]))
 
-@bot.command(pass_context=True)  
+@bot.command(pass_context=True)
 @asyncio.coroutine
 def misquote(ctx , target : discord.User):
 
@@ -163,23 +225,20 @@ def misquote(ctx , target : discord.User):
         #    user = target
         #else:
         #    user = ctx.message.server.get_member(target)
-       
-        yield from bot.send_message(ctx.message.author,
-                                    ('What would you like to be '
-                                     + ' misattributed to ' 
-                                     + user.name + '?'))
+
+        yield from bot.send_message(ctx.message.author, ('What would you like to be ' + ' misattributed to ' + user.name + '?'))
 
         log.info(log_msg(['sent_message', 'misquote_dm_request', user.name]))
 
         def priv(msg):
             return msg.channel.is_private == True
 
-        reply = yield from bot.wait_for_message(timeout=60.0, 
-                                                author=ctx.message.author, 
+        reply = yield from bot.wait_for_message(timeout=60.0,
+                                                author=ctx.message.author,
                                                 check=priv)
 
-        log.info(log_msg(['received_request', 
-                          'misquote_response', 
+        log.info(log_msg(['received_request',
+                          'misquote_response',
                           ctx.message.author.name,
                           ctx.message.channel.name,
                           reply.clean_content]))
@@ -199,7 +258,7 @@ def misquote(ctx , target : discord.User):
                            reply.clean_content ]))
 #        else:
 #            yield from bot.say("Insufficient Access")
-        
+
     except discord.ext.commands.errors.BadArgument:
         log.warning(log_msg(['user_not_found',
                              target,
@@ -241,7 +300,7 @@ def frames(char : str, move : str, situ : str=""):
                       'Bison':'M.Bison',
                       'Bipson':'M.Bison',
                       'Dictator':'M.Bison'}
-                      
+
         directions = {'stand':'stand',
                       '5':'stand',
                       's':'stand',
@@ -272,7 +331,7 @@ def frames(char : str, move : str, situ : str=""):
                    'lp':'LP',
                    'light punch':'LP',
                    'jab':'LP'}
-        
+
         # Select Move
         if c in char_names.keys():
             char = char_names[c]
@@ -280,7 +339,7 @@ def frames(char : str, move : str, situ : str=""):
             char = c
         move_name = ' '.join([directions[d], buttons[b]])
         move = moves[char]['moves']['normal'][move_name]
-        
+
         # Responses for startup, active, recovery
         if s in ('block', 'hit'):
             if s == 'block':
@@ -288,27 +347,27 @@ def frames(char : str, move : str, situ : str=""):
 
             if s == 'hit':
                 frames = move['onHit']
-                
+
             if frames > 0:
                 yield from bot.say("{0}'s {1} is **+{2}** on {3}".format(
                     char,
                     move_name,
                     str(frames),
                     s))
-                
+
             elif frames == 0:
                 yield from bot.say("{0}'s {1} is **EVEN** on {3}".format(
                     char,
                     move_name,
                     s))
-                
+
             else:
                 yield from bot.say("{0}'s {1} is **{2}** on {3}".format(
                     char,
                     move_name,
                     str(frames),
                     s))
-                
+
         elif s in ('startup', 'recovery'):
             frames = move[s]
             yield from bot.say("{0}'s {1} has **{2}** frames of {3}.".format(
@@ -323,17 +382,17 @@ def frames(char : str, move : str, situ : str=""):
                                 char,
                                 move_name,
                                 str(frames)))
-                                
+
         # Responses for damage and stun
         elif s in ('damage', 'stun'):
             deeps = move[s]
-                
+
             yield from bot.say("{0}'s {1} does **{2}** {3}.".format(
                                 char,
                                 move_name,
                                 str(deeps),
                                 s))
-        
+
         # For nothing, or anything else, respond with summary of frame data
         else:
             # Dictionary of key names and nice names for printed results
@@ -345,18 +404,18 @@ def frames(char : str, move : str, situ : str=""):
                          'damage': ('Damage', 5),
                          'stun': ('Stun', 6)
                         }
-            
-            output = "{0}'s {1} frame data:\n".format(char, move_name) 
-            
+
+            output = "{0}'s {1} frame data:\n".format(char, move_name)
+
             # Add to output based on existing frame data
-            for x in sorted(dataNames, key=lambda x : dataNames[x][1]):          
+            for x in sorted(dataNames, key=lambda x : dataNames[x][1]):
                 output += "{0}: **{1}**, ".format(dataNames[x][0], str(move[x]))
-            
-            # Remove last character (extra comma)        
+
+            # Remove last character (extra comma)
             output = output[:-2]
-            
+
             yield from bot.say(output)
-        
+
     except KeyError:
         log.warning(log_msg(['frame_data_not_found', 'character',  c]))
 
@@ -377,7 +436,7 @@ def frames(char : str, move : str, situ : str=""):
 
     except UnboundLocalError:
         log.warning(log_msg(['frame_data_not_found', 'situation',  s]))
-        
+
         yield from bot.say("Situation Not Found")
 
         log.info(log_msg(['sent_message',
@@ -390,4 +449,4 @@ if __name__=='__main__':
 
     log.info(log_msg(['bot_intialize']))
     bot.run(os.environ['DISCORD_QUOTEBOT_TOKEN'])
-    
+
