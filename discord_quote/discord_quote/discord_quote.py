@@ -36,7 +36,7 @@ def log_msg(data):
 
     where {data} should be a \u241e delimited row.
     """
-    tmp = [d.replace(u'\u241e', ' ') for d in data]
+    tmp = [str(d).replace(u'\u241e', ' ') for d in data]
     return u'\u241e'.join(tmp)
 
 # Code
@@ -55,12 +55,12 @@ def on_ready():
     # the bot is online. Only send in text channels that the bot has permission
     # in.
     for channel in bot.get_all_channels():
-        if (channel.permissions_for(channel.server.me).send_messages
+        if (channel.permissions_for(channel.guild.me).send_messages
             and channel.type == discord.ChannelType.text):
             log.info(log_msg([
                 'sent_message',
                 'channel_join', 
-                '\\'.join([channel.server.name, channel.name])]
+                '\\'.join([channel.guild.name, channel.name])]
                 )
             )
             yield from bot.send_message(channel, 'yo, we in there')
@@ -124,7 +124,7 @@ def quote(ctx, msg_id : str, *reply : str):
         author = msg_.author.name
         message_time = msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S")
         jump_url = 'https://discordapp.com/channels/{0}/{1}/{2}'.format(
-                msg_.channel.server.id,
+                msg_.channel.guild.id,
                 msg_.channel.id,
                 msg_.id
             )
