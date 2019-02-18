@@ -115,7 +115,7 @@ async def _get_hook(ctx):
         hook = webhooks[0]
         log.info(log_msg(['webhook_found', hook.name]))
     else:
-        log.info(log_msg(['webhook_not_found', hook.name]))
+        log.info(log_msg(['webhook_not_found']))
 
         # Otherwise, create a webhook.
         hook = await ctx.channel.create_webhook(name=bot.user.name)
@@ -146,7 +146,7 @@ async def quote(ctx, msg_id : str, *reply : str):
 
         # Use WebHooks if possible
         if hook:
-            payload = await webhook_quote(ctx, msg_id, msg_, *reply)
+            payload = await webhook_quote2(ctx, msg_id, msg_, *reply)
 
             # We need custom handling, so create a Webhook Adapter from our hook
             await hook._adapter.execute_webhook(
@@ -174,6 +174,20 @@ async def quote(ctx, msg_id : str, *reply : str):
     await ctx.message.delete()
     log.info(log_msg(['deleted_request', msg_id]))
 
+async def format_message(msg_id):
+        # Retrieve the message
+        msg_ = await ctx.channel.get_message(msg_id)
+        log.info(log_msg(['retrieved_quote',
+                      msg_id,
+                      ctx.message.channel.name,
+                      msg_.author.name,
+                      msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                      ctx.message.author.name,
+                      msg_.clean_content]))
+
+
+async def webhook_quote2(ctx, msg_id : str, msg_, *reply: str):
+    return
 async def webhook_quote(ctx, msg_id : str, msg_, *reply: str):
     # This is the new way to quote things. This is the default unless you take
     # away the 'Manage Webhooks' permission from the bot.
@@ -196,7 +210,7 @@ async def webhook_quote(ctx, msg_id : str, msg_, *reply: str):
             message_time = _author.group(2)
             log.info(log_msg(['found_original_timestamp', msg_id, message_time]))
 
-    relative_time = arrow.get(ctx.message.created_at).humanize(arrow.get(message_time))
+    relative_time = arrow.get(message_time).humanize(arrow.get(ctx.message.created_at))
     clean_content = msg_.clean_content
 
     # Format output message, handling replies and quotes
