@@ -47,8 +47,7 @@ description = '''
 bot = commands.Bot(command_prefix='!', description=description)
 
 @bot.event
-@asyncio.coroutine
-def on_ready():
+async def on_ready():
     log.info(log_msg(['login', bot.user.name, bot.user.id]))
 
     # Search all visibile channels and send a message letting users know that
@@ -56,14 +55,16 @@ def on_ready():
     # in.
     for channel in bot.get_all_channels():
         if (channel.permissions_for(channel.guild.me).send_messages
-            and channel.type == discord.ChannelType.text):
+            and isinstance(channel, discord.TextChannel)):
             log.info(log_msg([
                 'sent_message',
                 'channel_join', 
                 '\\'.join([channel.guild.name, channel.name])]
                 )
             )
-            yield from bot.send_message(channel, 'yo, we in there')
+
+            await channel.send('yo we in there')
+
 
 #@bot.event
 #@asyncio.coroutine
@@ -100,6 +101,26 @@ def me(ctx, *text : str):
     yield from bot.delete_message(ctx.message)
     log.info(log_msg(['deleted_request', ctx.message.id]))
 
+# Get a WebHook
+async def _get_hook(ctx):
+    # Check for webhook permission and return immeditately if no permission
+    # Not implemented
+
+    # Figure out the appropriate webhook
+    hook = None
+    webhooks = await ctx.channel.webhooks()
+    if webhooks:
+        # If there's an existing webhook, just use that.
+        hook = webhooks[0]
+        log.info(log_msg(['webhook_found', hook.name]))
+    else:
+        log.info(log_msg(['webhook_not_found', hook.name]))
+
+        # Otherwise, create a webhook.
+        hook = await ctx.channel.create_webhook(name=bot.user.name)
+        log.info(log_msg(['webhook_created', hook.name]))
+
+    return(hook)
 
 @bot.command(pass_context=True)
 @asyncio.coroutine
@@ -110,19 +131,24 @@ def quote(ctx, msg_id : str, *reply : str):
                       msg_id]))
 
     try:
-        msg_ = yield from bot.get_message(ctx.message.channel, msg_id)
+        msg_ = yield from ctx.get_message(msg_id)
 
+        # We need custom handling, so create a Webhook Adapter from our hook
+        hook = yield from _get_hook(ctx)
+        yield from hook._adapter.execute_webhook(
+            payload={"content":"[yo](https://www.google.com)"}
+        )
         log.info(log_msg(['retrieved_quote',
                           msg_id,
                           ctx.message.channel.name,
                           msg_.author.name,
-                          msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                          msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                           ctx.message.author.name,
                           msg_.clean_content]))
 
         quote = False
         author = msg_.author.name
-        message_time = msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        message_time = msg_.created_at.strftime("%Y-%m-%d %H:%M:%S")
         jump_url = 'https://discordapp.com/channels/{0}/{1}/{2}'.format(
                 msg_.channel.guild.id,
                 msg_.channel.id,
@@ -142,7 +168,7 @@ def quote(ctx, msg_id : str, *reply : str):
                 message_time = _author.group(2)
                 log.info(log_msg(['found_original_timestamp', msg_id, message_time]))
 
-        relative_time = arrow.get(ctx.message.timestamp).humanize(arrow.get(message_time))
+        relative_time = arrow.get(ctx.message.created_at).humanize(arrow.get(message_time))
         clean_content = msg_.clean_content
 
         # Format output message, handling replies and quotes
@@ -151,7 +177,7 @@ def quote(ctx, msg_id : str, *reply : str):
             # Simplest case, just quoting a non-quotebot message, with no reply
             output = '_heard_\n**{0} [[{1}]({4})] said:** _via {2}_ ```{3}```'.format(
                                 author,
-                                msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                                msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                                 ctx.message.author.name,
                                 clean_content,
                                 jump_url
@@ -199,7 +225,7 @@ def quote(ctx, msg_id : str, *reply : str):
                 + '**{3} [{4}] responded:** {5}'
             ).format(
                      author,
-                     msg_.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                     msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                      clean_content,
                      ctx.message.author.name,
                      relative_time,
@@ -208,7 +234,7 @@ def quote(ctx, msg_id : str, *reply : str):
             )
         log.info(log_msg(['formatted_quote', ' '.join(reply)]))
 
-        yield from bot.say(output)
+        yield from ctx.channel.send(output)
 
         log.info(log_msg(['sent_message', 'quote', ctx.message.channel.name]))
 
@@ -216,7 +242,7 @@ def quote(ctx, msg_id : str, *reply : str):
         log.warning(['msg_not_found', msg_id, ctx.message.author.mention])
 
         # Return error if message not found.
-        yield from bot.say(("Quote not found in this channel ('{0}' "
+        yield from ctx.channel.send(("Quote not found in this channel ('{0}' "
                             + "requested by "
                             + "{1})").format(msg_id,
                                              ctx.message.author.name))
@@ -225,7 +251,7 @@ def quote(ctx, msg_id : str, *reply : str):
                           ctx.message.channel.name]))
 
     # Clean up request regardless of success
-    yield from bot.delete_message(ctx.message)
+    yield from ctx.message.delete_message(ctx.message)
     log.info(log_msg(['deleted_request', msg_id]))
 
 @bot.command(pass_context=True)
