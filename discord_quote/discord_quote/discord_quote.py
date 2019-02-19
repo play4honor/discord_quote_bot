@@ -85,10 +85,7 @@ async def me(ctx, *text : str):
                       ctx.message.channel.name,
                       ' '.join(text)]))
 
-    output = '_{0} {1}_'.format(
-                                ctx.message.author.name,
-                                ' '.join(text)
-                            )
+    output = f"_{ctx.message.author.name} { ' '.join(text) }_"
 
     log.info(log_msg(['formatted_self', ' '.join(text)]))
 
@@ -147,10 +144,11 @@ async def quote(ctx, msg_id : str, *reply : str):
         log.warning(['msg_not_found', msg_id, ctx.message.author.mention, e])
 
         # Return error if message not found.
-        await ctx.channel.send(("Quote not found in this channel ('{0}' "
-                            + "requested by "
-                            + "{1})").format(msg_id,
-                                             ctx.message.author.name))
+        await ctx.channel.send(
+            f"Couldn't quote ({msg_id}) in this channel. " +
+            f"Requested by {ctx.message.author.name}."
+        )
+
         log.info(log_msg(['sent_message',
                           'invalid_quote_request',
                           ctx.message.channel.name]))
@@ -187,19 +185,19 @@ async def webhook_quote(ctx, msg_, *reply: str):
         if reply:
             output = (
                 await _format_message(ctx, msg_, 'said') +
-                f'**{ctx.message.author.name} responded:** {" ".join(reply)}'
+                f"**{ctx.message.author.name} responded:** {' '.join(reply)}"
             )
         if not reply:
             output = (
                 await _format_message(ctx, msg_, 'said') +
-                f'_via {ctx.message.author.name}_'
+                f"_via {ctx.message.author.name}_"
             )
     elif quote:
 
         if reply:
             output = (
                 await _format_quote(ctx, msg_) +
-                f'\n**{ctx.message.author.name} responded:** {" ".join(reply)}'
+                f"\n**{ctx.message.author.name} responded:** {' '.join(reply)}"
             )
         elif not reply:
             output = await _format_quote(ctx, msg_)
@@ -216,9 +214,9 @@ async def _format_message(ctx, msg_, action):
     relative_time = original_message_time.humanize(current_time)
 
     output = (
-        f'**{msg_.author.name} {action} [{relative_time}](<{msg_.jump_url}>):** ```' +
-        msg_.clean_content +
-        '```'
+        f"**{msg_.author.name} {action} " +
+        f"[{relative_time}](<{msg_.jump_url}>):** "+
+        f"```{msg_.clean_content}```"
     )
 
     return(output)
@@ -279,10 +277,10 @@ async def _format_quote(ctx, msg_):
 
     # Append the jump url into the quote
     if last_responder:
-        _old_speaker = f'**{last_responder.group(1)} responded:**'
+        _old_speaker = f"**{last_responder.group(1)} responded:**"
         _new_speaker = (
-            f'**{last_responder.group(1)} responded ' +
-            f'[{relative_time}](<{msg_.jump_url}>):**'
+            f"**{last_responder.group(1)} responded " +
+            f"[{relative_time}](<{msg_.jump_url}>):**"
         )
 
         output = output.replace(_old_speaker, _new_speaker)
@@ -317,12 +315,10 @@ async def bot_quote(ctx, msg_, *reply : str):
     if not reply and not quote:
         log.info(log_msg(['formatting_quote', 'noreply|noquote']))
         # Simplest case, just quoting a non-quotebot message, with no reply
-        output = '**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
-                            author,
-                            msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                            ctx.message.author.name,
-                            clean_content
-                    )
+        output = (
+            f"**{author} [{message_time}] said:** _via " +
+            f"{ctx.message.author.name}_ ```{clean_content}```"
+        )
     elif not reply and quote:
         log.info(log_msg(['formatting_quote', 'noreply|quote']))
 
@@ -332,7 +328,7 @@ async def bot_quote(ctx, msg_, *reply : str):
             # Replace the original quoter with the new quoter
             output = {0}.replace(
                 _quoter.group(0),
-                "__via {0}__".format(ctx.message.author.name)
+                f"__via {ctx.message.author.name}__"
             )
         else:
             # If the regex breaks, just forward the old message.
@@ -349,30 +345,26 @@ async def bot_quote(ctx, msg_, *reply : str):
         if _last_response:
             clean_content = clean_content.replace(
                     _last_response.group(1),
-                    "[{0}({1})]".format(_last_response.group(1), jump_url)
+                    f"[{_last_response.group(1)}({jump_url})]"
             )
 
         # Reply to a quotebot quote with a reply
-        output = '{0}\n**{1} [{2}] responded:** {3}'.format(
-                            clean_content,
-                            ctx.message.author.name,
-                            ctx.message.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                            ' '.join(reply)
-                    )
+        output = (
+            f"{clean_content}\n**{ctx.message.author.name} " +
+            f"[{ctx.message.created_at.strftime('%Y-%m-%d %H:%M:%S')}] " +
+            f"responded:** {' '.join(reply)}"
+        )
     else:
         log.info(log_msg(['formatting_quote', 'reply|quote']))
 
         output = (
-            '**{0} [{1}] said:** ```{2}```'
-            + '**{3} [{4}] responded:** {5}'
-        ).format(
-                 author,
-                 msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                 clean_content,
-                 ctx.message.author.name,
-                 ctx.message.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                 ' '.join(reply)
+                f"**{author} [{msg_.created_at.strftime('%Y-%m-%d %H:%M:%S')}] " +
+                f"said:** ```{clean_content}```" +
+                f"**{ctx.message.author.name} " +
+                f"[{ctx.message.created_at.strftime('%Y-%m-%d %H:%M:%S')}] " +
+                f"responded:** {' '.join(reply)}"
         )
+
     log.info(log_msg(['formatted_quote', ' '.join(reply)]))
 
     await ctx.channel.send(output)
@@ -398,7 +390,7 @@ async def misquote(ctx , target : discord.User):
         #    user = ctx.message.server.get_member(target)
 
         await ctx.message.author.send(
-          f'What would you like to be misattributed to {user.name}?'
+          f"What would you like to be misattributed to {user.name}?"
         )
 
         log.info(log_msg(['sent_message', 'misquote_dm_request', user.name]))
@@ -428,7 +420,7 @@ async def misquote(ctx , target : discord.User):
         ).strftime("%Y-%m-%d %H:%M:%S")
 
         await ctx.channel.send(
-            f'**{user.name} [{faketime}] definitely said:** ```'
+            f"**{user.name} [{faketime}] definitely said:** ```"
             + reply.clean_content + '```'
         )
 
