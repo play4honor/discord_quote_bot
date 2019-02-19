@@ -77,7 +77,7 @@ async def on_ready():
 #
 #    log.info(log_msg(['sent_message', 'server_join', ctx.message.channel.name]))
 
-@bot.command(pass_context=True)
+@bot.command()
 async def me(ctx, *text : str):
     log.info(log_msg(['received_request',
                       'me',
@@ -92,12 +92,12 @@ async def me(ctx, *text : str):
 
     log.info(log_msg(['formatted_self', ' '.join(text)]))
 
-    await bot.say(output)
+    await ctx.channel.send(output)
 
     log.info(log_msg(['sent_message', 'me', ctx.message.channel.name]))
 
     # Clean up request regardless of success
-    await bot.delete_message(ctx.message)
+    await ctx.message.delete()
     log.info(log_msg(['deleted_request', ctx.message.id]))
 
 @bot.command()
@@ -404,9 +404,9 @@ async def misquote(ctx , target : discord.User):
         def priv(msg):
             return msg.channel.is_private == True
 
-        reply = await from bot.wait_for_message(timeout=60.0,
-                                                author=ctx.message.author,
-                                                check=priv)
+        reply = await bot.wait_for_message(timeout=60.0,
+                                           author=ctx.message.author,
+                                           check=priv)
 
         log.info(log_msg(['received_request',
                           'misquote_response',
