@@ -146,7 +146,7 @@ async def quote(ctx, msg_id : str, *reply : str):
 
         # Use WebHooks if possible
         if hook:
-            payload = await webhook_quote2(ctx, msg_id, msg_, *reply)
+            payload = await webhook_quote2(ctx, msg_, *reply)
 
             # We need custom handling, so create a Webhook Adapter from our hook
             await hook._adapter.execute_webhook(
@@ -158,8 +158,8 @@ async def quote(ctx, msg_id : str, *reply : str):
             )
         else:
             await bot_quote(ctx, msg_id, *reply)
-    except discord.errors.HTTPException:
-        log.warning(['msg_not_found', msg_id, ctx.message.author.mention])
+    except discord.errors.HTTPException as e:
+        log.warning(['msg_not_found', msg_id, ctx.message.author.mention, e])
 
         # Return error if message not found.
         await ctx.channel.send(("Quote not found in this channel ('{0}' "
@@ -174,20 +174,76 @@ async def quote(ctx, msg_id : str, *reply : str):
     await ctx.message.delete()
     log.info(log_msg(['deleted_request', msg_id]))
 
-async def format_message(msg_id):
-        # Retrieve the message
-        msg_ = await ctx.channel.get_message(msg_id)
-        log.info(log_msg(['retrieved_quote',
-                      msg_id,
-                      ctx.message.channel.name,
-                      msg_.author.name,
-                      msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                      ctx.message.author.name,
-                      msg_.clean_content]))
+async def format_message(ctx, msg_, action):
+    # Figure out the respective times
+    current_time = arrow.get(ctx.message.created_at)
+    original_message_time = arrow.get(msg_.created_at)
+    relative_time = original_message_time.humanize(current_time)
 
+    output = (
+        f'[**{msg_.author} {action} {relative_time}:**](<{msg_.jump_url}>) ```' +
+        msg_.clean_content +
+        '```'
+    )
 
-async def webhook_quote2(ctx, msg_id : str, msg_, *reply: str):
-    return
+    return(output)
+
+async def format_quote(ctx, msg_):
+    output = msg_.content
+
+    # Identify the response in the quote without a jump url
+    last_responder = re.search('\*\*(.*)\sresponded:\*\*\s', output)
+
+    current_time = arrow.get(ctx.message.created_at)
+
+    # Adjust old relative times
+    # Not implemented
+    # Edit in the new relative time
+    quotebot_message_time = arrow.get(msg_.created_at)
+    relative_time = quotebot_message_time.humanize(current_time)
+
+    # Append the jump url into the quote
+    if last_responder:
+        _old_speaker = f'**{last_responder.group(1)} responded:**'
+        _new_speaker = (
+            f'[**{last_responder.group(1)} responded ' +
+            f'{relative_time}**](<{msg_.jump_url}>):'
+        )
+
+        output = output.replace(_old_speaker, _new_speaker)
+
+    return(output)
+
+async def webhook_quote2(ctx, msg_, *reply: str):
+    # This version depends on everything being well quoted (e.g., with jumpurls)
+    # If the message that has been passed is assigned to the bot, then it is a
+    # previous quote.
+    quote = (msg_.author.name == bot.user.name)
+    if not quote:
+        if reply:
+            output = (
+                await format_message(ctx, msg_, 'said') +
+                f'**{ctx.message.author} responded:** {" ".join(reply)}'
+            )
+        if not reply:
+            output = (
+                await format_message(ctx, msg_, 'said') +
+                f'_via {ctx.message.author}_'
+            )
+    elif quote:
+
+        if reply:
+            output = (
+                await format_quote(ctx, msg_) +
+                f'\n**{ctx.message.author} responded:** {" ".join(reply)}'
+            )
+        elif not reply:
+            output = await format_quote(ctx, msg_)
+    else:
+        pass
+
+    return(output)
+
 async def webhook_quote(ctx, msg_id : str, msg_, *reply: str):
     # This is the new way to quote things. This is the default unless you take
     # away the 'Manage Webhooks' permission from the bot.
