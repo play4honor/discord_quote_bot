@@ -25,6 +25,10 @@ To get different versions of this bot, you can pull from Docker Hub:
 
 # Additional Details
 
+## Permissions Needed
+
+- You may need to enable `Manage Webhooks` to get full functionality.
+
 ## Development Branch
 
 We maintain a fully functioning (hopefully!) development branch. We should test out changes on this branch before merging into the master. To start up the `quote-bot-dev` bot, follow this set of modified instructions:  
