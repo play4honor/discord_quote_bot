@@ -412,7 +412,7 @@ async def misquote(ctx , target : discord.User):
                 m.author == ctx.message.author 
                 and isinstance(m.channel, discord.DMChannel)
             )
-        reply = await bot.wait_for('message', check=pred)
+        reply = await bot.wait_for('message', check=pred, timeout=60)
 #        reply = await bot.wait_for_message(timeout=60.0,
 #                                           author=ctx.message.author,
 #                                           check=priv)
