@@ -78,8 +78,7 @@ async def on_ready():
 #    log.info(log_msg(['sent_message', 'server_join', ctx.message.channel.name]))
 
 @bot.command(pass_context=True)
-@asyncio.coroutine
-def me(ctx, *text : str):
+async def me(ctx, *text : str):
     log.info(log_msg(['received_request',
                       'me',
                       ctx.message.author.name,
@@ -93,12 +92,12 @@ def me(ctx, *text : str):
 
     log.info(log_msg(['formatted_self', ' '.join(text)]))
 
-    yield from bot.say(output)
+    await bot.say(output)
 
     log.info(log_msg(['sent_message', 'me', ctx.message.channel.name]))
 
     # Clean up request regardless of success
-    yield from bot.delete_message(ctx.message)
+    await bot.delete_message(ctx.message)
     log.info(log_msg(['deleted_request', ctx.message.id]))
 
 @bot.command()
@@ -381,8 +380,7 @@ async def bot_quote(ctx, msg_, *reply : str):
     log.info(log_msg(['sent_message', 'quote', ctx.message.channel.name]))
 
 @bot.command(pass_context=True)
-@asyncio.coroutine
-def misquote(ctx , target : discord.User):
+async def misquote(ctx , target : discord.User):
 
     log.info(log_msg(['received_request',
                       'misquote',
@@ -399,14 +397,14 @@ def misquote(ctx , target : discord.User):
         #else:
         #    user = ctx.message.server.get_member(target)
 
-        yield from bot.send_message(ctx.message.author, ('What would you like to be ' + ' misattributed to ' + user.name + '?'))
+        await bot.send_message(ctx.message.author, ('What would you like to be ' + ' misattributed to ' + user.name + '?'))
 
         log.info(log_msg(['sent_message', 'misquote_dm_request', user.name]))
 
         def priv(msg):
             return msg.channel.is_private == True
 
-        reply = yield from bot.wait_for_message(timeout=60.0,
+        reply = await from bot.wait_for_message(timeout=60.0,
                                                 author=ctx.message.author,
                                                 check=priv)
 
@@ -418,7 +416,7 @@ def misquote(ctx , target : discord.User):
 
         faketime = datetime.datetime.now() - datetime.timedelta(minutes=5)
 
-        yield from bot.say('**{0} [{1}] definitely said:** ```{2}```'.format(
+        await bot.say('**{0} [{1}] definitely said:** ```{2}```'.format(
                             user.name,
                             faketime.strftime("%Y-%m-%d %H:%M:%S"),
                             reply.clean_content
@@ -437,15 +435,14 @@ def misquote(ctx , target : discord.User):
                              target,
                              ctx.message.author.name]))
 
-        yield from bot.say("User not found")
+        await bot.say("User not found")
 
         log.info(log_msg(['sent_message',
                           'invalid_misquote_request',
                           ctx.message.channel.name]))
 
 @bot.command()
-@asyncio.coroutine
-def frames(char : str, move : str, situ : str=""):
+async def frames(char : str, move : str, situ : str=""):
     log.info(log_msg(['received_request',
                       'frames',
                       char,
@@ -522,20 +519,20 @@ def frames(char : str, move : str, situ : str=""):
                 frames = move['onHit']
 
             if frames > 0:
-                yield from bot.say("{0}'s {1} is **+{2}** on {3}".format(
+                await bot.say("{0}'s {1} is **+{2}** on {3}".format(
                     char,
                     move_name,
                     str(frames),
                     s))
 
             elif frames == 0:
-                yield from bot.say("{0}'s {1} is **EVEN** on {3}".format(
+                await bot.say("{0}'s {1} is **EVEN** on {3}".format(
                     char,
                     move_name,
                     s))
 
             else:
-                yield from bot.say("{0}'s {1} is **{2}** on {3}".format(
+                await bot.say("{0}'s {1} is **{2}** on {3}".format(
                     char,
                     move_name,
                     str(frames),
@@ -543,7 +540,7 @@ def frames(char : str, move : str, situ : str=""):
 
         elif s in ('startup', 'recovery'):
             frames = move[s]
-            yield from bot.say("{0}'s {1} has **{2}** frames of {3}.".format(
+            await bot.say("{0}'s {1} has **{2}** frames of {3}.".format(
                                 char,
                                 move_name,
                                 str(frames),
@@ -551,7 +548,7 @@ def frames(char : str, move : str, situ : str=""):
 
         elif s == 'active':
             frames = move[s]
-            yield from bot.say("{0}'s {1} is active for **{2}** frames.".format(
+            await bot.say("{0}'s {1} is active for **{2}** frames.".format(
                                 char,
                                 move_name,
                                 str(frames)))
@@ -560,7 +557,7 @@ def frames(char : str, move : str, situ : str=""):
         elif s in ('damage', 'stun'):
             deeps = move[s]
 
-            yield from bot.say("{0}'s {1} does **{2}** {3}.".format(
+            await bot.say("{0}'s {1} does **{2}** {3}.".format(
                                 char,
                                 move_name,
                                 str(deeps),
@@ -587,12 +584,12 @@ def frames(char : str, move : str, situ : str=""):
             # Remove last character (extra comma)
             output = output[:-2]
 
-            yield from bot.say(output)
+            await bot.say(output)
 
     except KeyError:
         log.warning(log_msg(['frame_data_not_found', 'character',  c]))
 
-        yield from bot.say("Character Not Found")
+        await bot.say("Character Not Found")
 
         log.info(log_msg(['sent_message',
                           'invalid_character_request',
@@ -601,7 +598,7 @@ def frames(char : str, move : str, situ : str=""):
     except IndexError:
         log.warning(log_msg(['frame_data_not_found', 'move',  m]))
 
-        yield from bot.say("Move Not Found")
+        await bot.say("Move Not Found")
 
         log.info(log_msg(['sent_message',
                           'invalid_move_request',
@@ -610,7 +607,7 @@ def frames(char : str, move : str, situ : str=""):
     except UnboundLocalError:
         log.warning(log_msg(['frame_data_not_found', 'situation',  s]))
 
-        yield from bot.say("Situation Not Found")
+        await bot.say("Situation Not Found")
 
         log.info(log_msg(['sent_message',
                          'invalid_situation_request',
