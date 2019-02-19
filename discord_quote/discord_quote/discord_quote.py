@@ -108,6 +108,10 @@ async def quote(ctx, msg_id : str, *reply : str):
                       ctx.message.channel.name,
                       msg_id]))
 
+    # Clean up request regardless of success
+    await ctx.message.delete()
+    log.info(log_msg(['deleted_request', msg_id]))
+
     try:
         # Retrieve the message
         msg_ = await ctx.channel.get_message(msg_id)
@@ -152,9 +156,6 @@ async def quote(ctx, msg_id : str, *reply : str):
                           'invalid_quote_request',
                           ctx.message.channel.name]))
 
-    # Clean up request regardless of success
-    await ctx.message.delete()
-    log.info(log_msg(['deleted_request', msg_id]))
 
 # Helper function for quote: gets a WebHook
 async def _get_hook(ctx):
@@ -216,7 +217,7 @@ async def _format_message(ctx, msg_, action):
     relative_time = original_message_time.humanize(current_time)
 
     output = (
-        f'[**{msg_.author} {action} {relative_time}:**](<{msg_.jump_url}>) ```' +
+        f'**{msg_.author} {action} [{relative_time}](<{msg_.jump_url}>):** ```' +
         msg_.clean_content +
         '```'
     )
@@ -233,8 +234,47 @@ async def _format_quote(ctx, msg_):
     current_time = arrow.get(ctx.message.created_at)
 
     # Adjust old relative times
-    # Not implemented
-    # Edit in the new relative time
+    # First, identify the old times
+    old_relative_times = re.findall(
+        '(\*\*.*\[(.*)\]\(\<' +
+        'https:\/\/discordapp\.com\/channels\/[0-9]*\/[0-9]*\/([0-9]*)'
+        +'\>\))',
+        output
+    )
+
+    # Now, re-humanize these times:
+    if old_relative_times:
+        log.info(log_msg(['old_relative_times', 'found']))
+        for i in range(len(old_relative_times)):
+            _temp = old_relative_times[i]
+
+            # initialize the target (_old_speaker)
+            # and the new content (_new_speaker)
+            _old_speaker = _temp[0]
+            _new_speaker = _temp[0]
+
+            # get the associated old message
+            _old_msg = await ctx.channel.get_message(_temp[2])
+            log.info(log_msg(['retrieved_quote',
+                          _old_msg.id,
+                          ctx.message.channel.name,
+                          _old_msg.author.name,
+                          _old_msg.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                          ctx.message.author.name,
+                          _old_msg.clean_content]))
+
+            # rehumanize the time
+            _old_msg_time = arrow.get(_old_msg.created_at)
+            _new_relative_time = _old_msg_time.humanize(current_time)
+
+            # format the replacement string
+            _new_speaker = _new_speaker.replace(_temp[1], _new_relative_time)
+
+            # update the output
+            output = output.replace(_old_speaker, _new_speaker)
+
+
+    # Edit in the new relative time for the last response
     quotebot_message_time = arrow.get(msg_.created_at)
     relative_time = quotebot_message_time.humanize(current_time)
 
@@ -242,8 +282,8 @@ async def _format_quote(ctx, msg_):
     if last_responder:
         _old_speaker = f'**{last_responder.group(1)} responded:**'
         _new_speaker = (
-            f'[**{last_responder.group(1)} responded ' +
-            f'{relative_time}**](<{msg_.jump_url}>):'
+            f'**{last_responder.group(1)} responded ' +
+            f'[{relative_time}](<{msg_.jump_url}>):**'
         )
 
         output = output.replace(_old_speaker, _new_speaker)
