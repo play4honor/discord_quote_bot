@@ -146,7 +146,7 @@ async def quote(ctx, msg_id : str, *reply : str):
 
         # Use WebHooks if possible
         if hook:
-            payload = await webhook_quote2(ctx, msg_, *reply)
+            payload = await webhook_quote(ctx, msg_, *reply)
 
             # We need custom handling, so create a Webhook Adapter from our hook
             await hook._adapter.execute_webhook(
@@ -156,8 +156,12 @@ async def quote(ctx, msg_id : str, *reply : str):
                     "avatar_url": ctx.guild.me.avatar_url
                 }
             )
+
+            log.info(log_msg(['sent_webhook_message',
+                              'quote',
+                              ctx.message.channel.name]))
         else:
-            await bot_quote(ctx, msg_id, *reply)
+            await bot_quote(ctx, msg_, *reply)
     except discord.errors.HTTPException as e:
         log.warning(['msg_not_found', msg_id, ctx.message.author.mention, e])
 
@@ -174,47 +178,8 @@ async def quote(ctx, msg_id : str, *reply : str):
     await ctx.message.delete()
     log.info(log_msg(['deleted_request', msg_id]))
 
-async def format_message(ctx, msg_, action):
-    # Figure out the respective times
-    current_time = arrow.get(ctx.message.created_at)
-    original_message_time = arrow.get(msg_.created_at)
-    relative_time = original_message_time.humanize(current_time)
 
-    output = (
-        f'[**{msg_.author} {action} {relative_time}:**](<{msg_.jump_url}>) ```' +
-        msg_.clean_content +
-        '```'
-    )
-
-    return(output)
-
-async def format_quote(ctx, msg_):
-    output = msg_.content
-
-    # Identify the response in the quote without a jump url
-    last_responder = re.search('\*\*(.*)\sresponded:\*\*\s', output)
-
-    current_time = arrow.get(ctx.message.created_at)
-
-    # Adjust old relative times
-    # Not implemented
-    # Edit in the new relative time
-    quotebot_message_time = arrow.get(msg_.created_at)
-    relative_time = quotebot_message_time.humanize(current_time)
-
-    # Append the jump url into the quote
-    if last_responder:
-        _old_speaker = f'**{last_responder.group(1)} responded:**'
-        _new_speaker = (
-            f'[**{last_responder.group(1)} responded ' +
-            f'{relative_time}**](<{msg_.jump_url}>):'
-        )
-
-        output = output.replace(_old_speaker, _new_speaker)
-
-    return(output)
-
-async def webhook_quote2(ctx, msg_, *reply: str):
+async def webhook_quote(ctx, msg_, *reply: str):
     # This version depends on everything being well quoted (e.g., with jumpurls)
     # If the message that has been passed is assigned to the bot, then it is a
     # previous quote.
@@ -244,116 +209,53 @@ async def webhook_quote2(ctx, msg_, *reply: str):
 
     return(output)
 
-async def webhook_quote(ctx, msg_id : str, msg_, *reply: str):
-    # This is the new way to quote things. This is the default unless you take
-    # away the 'Manage Webhooks' permission from the bot.
+# Helper function for WebHook Quote (quoting simple messages)
+async def format_message(ctx, msg_, action):
+    # Figure out the respective times
+    current_time = arrow.get(ctx.message.created_at)
+    original_message_time = arrow.get(msg_.created_at)
+    relative_time = original_message_time.humanize(current_time)
 
-    quote = False
-    author = msg_.author.name
-    message_time = msg_.created_at.strftime("%Y-%m-%d %H:%M:%S")
-    jump_url = msg_.jump_url
-
-    # If previously quoted, find the original author
-    if msg_.author.name == bot.user.name:
-        quote = True
-
-        # Run a regex search for the author name and if you can find it
-        # re-attribute. If you can't find it, it'll just be the bot's name
-        _author = re.search("^\*\*(.*)\[(.*)\]\ssaid:\*\*", msg_.clean_content)
-        if _author:
-            author = _author.group(1)
-            log.info(log_msg(['found_original_author', msg_id, author]))
-            message_time = _author.group(2)
-            log.info(log_msg(['found_original_timestamp', msg_id, message_time]))
-
-    relative_time = arrow.get(message_time).humanize(arrow.get(ctx.message.created_at))
-    clean_content = msg_.clean_content
-
-    # Format output message, handling replies and quotes
-    if not reply and not quote:
-        log.info(log_msg(['formatting_quote', 'noreply|noquote']))
-        # Simplest case, just quoting a non-quotebot message, with no reply
-        output = '_heard_\n**{0} [[{1}](<{4}>)] said:** _via {2}_ ```{3}```'.format(
-                            author,
-                            msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                            ctx.message.author.name,
-                            clean_content,
-                            jump_url
-                    )
-    elif not reply and quote:
-        log.info(log_msg(['formatting_quote', 'noreply|quote']))
-
-        # Find the original quoter
-        _quoter = re.search("__via.*?__", msg_.content)
-        if _quoter:
-            # Replace the original quoter with the new quoter
-            output = {0}.replace(
-                _quoter.group(0),
-                "__via {0}__".format(ctx.message.author.name)
-            )
-        else:
-            # If the regex breaks, just forward the old message.
-            output = msg_.content
-    elif reply and quote:
-        log.info(log_msg(['formatting_quote', 'reply|quote']))
-
-        # Detect Last Response so we can hyperlink
-        _last_response = re.search(
-                "\*\*[A-Za-z0-9]*\s(\[[A-Za-z0-9\s]*\])\sresponded",
-                msg_.content
-        )
-
-        if _last_response:
-            clean_content = clean_content.replace(
-                    _last_response.group(1),
-                    "[{0}({1})]".format(_last_response.group(1), jump_url)
-            )
-
-        # Reply to a quotebot quote with a reply
-        output = '{0}\n**{1} [{2}] responded:** {3}'.format(
-                            clean_content,
-                            ctx.message.author.name,
-                            relative_time,
-                            ' '.join(reply)
-                    )
-    else:
-        log.info(log_msg(['formatting_quote', 'reply|quote']))
-        output = (
-            '_heard_\n**{0} [[{1}](<{6}>)] said:** ```{2}```'
-            + '**{3} [{4}] responded:** {5}'
-        ).format(
-                 author,
-                 msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                 clean_content,
-                 ctx.message.author.name,
-                 relative_time,
-                 ' '.join(reply),
-                 jump_url
-        )
-    log.info(log_msg(['formatted_quote', ' '.join(reply)]))
+    output = (
+        f'[**{msg_.author} {action} {relative_time}:**](<{msg_.jump_url}>) ```' +
+        msg_.clean_content +
+        '```'
+    )
 
     return(output)
 
-    await ctx.channel.send(output)
+# Helper function for WebHook Quote (quoting quotes)
+async def format_quote(ctx, msg_):
+    output = msg_.content
 
-    log.info(log_msg(['sent_message', 'quote', ctx.message.channel.name]))
-    return
+    # Identify the response in the quote without a jump url
+    last_responder = re.search('\*\*(.*)\sresponded:\*\*\s', output)
 
-async def bot_quote(ctx, msg_id : str, *reply : str):
+    current_time = arrow.get(ctx.message.created_at)
+
+    # Adjust old relative times
+    # Not implemented
+    # Edit in the new relative time
+    quotebot_message_time = arrow.get(msg_.created_at)
+    relative_time = quotebot_message_time.humanize(current_time)
+
+    # Append the jump url into the quote
+    if last_responder:
+        _old_speaker = f'**{last_responder.group(1)} responded:**'
+        _new_speaker = (
+            f'[**{last_responder.group(1)} responded ' +
+            f'{relative_time}**](<{msg_.jump_url}>):'
+        )
+
+        output = output.replace(_old_speaker, _new_speaker)
+
+    return(output)
+
+async def bot_quote(ctx, msg_, *reply : str):
     # This is the old way to quote things, if you don't have the 'Manage
     # WebHooks' permission, but you have a bot user, then this is what will be
     # used.
 
-    # Retrieve the message
-    msg_ = await ctx.channel.get_message(msg_id)
-    log.info(log_msg(['retrieved_quote',
-                      msg_id,
-                      ctx.message.channel.name,
-                      msg_.author.name,
-                      msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                      ctx.message.author.name,
-                      msg_.clean_content]))
-
     quote = False
     author = msg_.author.name
     message_time = msg_.created_at.strftime("%Y-%m-%d %H:%M:%S")
@@ -367,9 +269,9 @@ async def bot_quote(ctx, msg_id : str, *reply : str):
         _author = re.search("^\*\*(.*)\[(.*)\]\ssaid:\*\*", msg_.clean_content)
         if _author:
             author = _author.group(1)
-            log.info(log_msg(['found_original_author', msg_id, author]))
+            log.info(log_msg(['found_original_author', msg_.id, author]))
             message_time = _author.group(2)
-            log.info(log_msg(['found_original_timestamp', msg_id, message_time]))
+            log.info(log_msg(['found_original_timestamp', msg_.id, message_time]))
 
     clean_content = msg_.clean_content
 
@@ -377,7 +279,7 @@ async def bot_quote(ctx, msg_id : str, *reply : str):
     if not reply and not quote:
         log.info(log_msg(['formatting_quote', 'noreply|noquote']))
         # Simplest case, just quoting a non-quotebot message, with no reply
-        output = '_heard_\n**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
+        output = '**{0} [{1}] said:** _via {2}_ ```{3}```'.format(
                             author,
                             msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                             ctx.message.author.name,
@@ -423,7 +325,7 @@ async def bot_quote(ctx, msg_id : str, *reply : str):
         log.info(log_msg(['formatting_quote', 'reply|quote']))
 
         output = (
-            '_heard_\n**{0} [{1}] said:** ```{2}```'
+            '**{0} [{1}] said:** ```{2}```'
             + '**{3} [{4}] responded:** {5}'
         ).format(
                  author,
