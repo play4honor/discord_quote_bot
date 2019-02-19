@@ -188,19 +188,19 @@ async def webhook_quote(ctx, msg_, *reply: str):
         if reply:
             output = (
                 await _format_message(ctx, msg_, 'said') +
-                f'**{ctx.message.author} responded:** {" ".join(reply)}'
+                f'**{ctx.message.author.name} responded:** {" ".join(reply)}'
             )
         if not reply:
             output = (
                 await _format_message(ctx, msg_, 'said') +
-                f'_via {ctx.message.author}_'
+                f'_via {ctx.message.author.name}_'
             )
     elif quote:
 
         if reply:
             output = (
                 await _format_quote(ctx, msg_) +
-                f'\n**{ctx.message.author} responded:** {" ".join(reply)}'
+                f'\n**{ctx.message.author.name} responded:** {" ".join(reply)}'
             )
         elif not reply:
             output = await _format_quote(ctx, msg_)
