@@ -101,28 +101,6 @@ def me(ctx, *text : str):
     yield from bot.delete_message(ctx.message)
     log.info(log_msg(['deleted_request', ctx.message.id]))
 
-# Get a WebHook
-async def _get_hook(ctx):
-    # Check for 'Manage WebHook' permission and return if missing permission
-    if not ctx.channel.permissions_for(ctx.guild.me).manage_webhooks:
-        return
-
-    # Figure out the appropriate webhook
-    hook = None
-    webhooks = await ctx.channel.webhooks()
-    if webhooks:
-        # If there's an existing webhook, just use that.
-        hook = webhooks[0]
-        log.info(log_msg(['webhook_found', hook.name]))
-    else:
-        log.info(log_msg(['webhook_not_found']))
-
-        # Otherwise, create a webhook.
-        hook = await ctx.channel.create_webhook(name=bot.user.name)
-        log.info(log_msg(['webhook_created', hook.name]))
-
-    return(hook)
-
 @bot.command()
 async def quote(ctx, msg_id : str, *reply : str):
     log.info(log_msg(['received_request',
@@ -178,6 +156,27 @@ async def quote(ctx, msg_id : str, *reply : str):
     await ctx.message.delete()
     log.info(log_msg(['deleted_request', msg_id]))
 
+# Helper function for quote: gets a WebHook
+async def _get_hook(ctx):
+    # Check for 'Manage WebHook' permission and return if missing permission
+    if not ctx.channel.permissions_for(ctx.guild.me).manage_webhooks:
+        return
+
+    # Figure out the appropriate webhook
+    hook = None
+    webhooks = await ctx.channel.webhooks()
+    if webhooks:
+        # If there's an existing webhook, just use that.
+        hook = webhooks[0]
+        log.info(log_msg(['webhook_found', hook.name]))
+    else:
+        log.info(log_msg(['webhook_not_found']))
+
+        # Otherwise, create a webhook.
+        hook = await ctx.channel.create_webhook(name=bot.user.name)
+        log.info(log_msg(['webhook_created', hook.name]))
+
+    return(hook)
 
 async def webhook_quote(ctx, msg_, *reply: str):
     # This version depends on everything being well quoted (e.g., with jumpurls)
@@ -187,30 +186,30 @@ async def webhook_quote(ctx, msg_, *reply: str):
     if not quote:
         if reply:
             output = (
-                await format_message(ctx, msg_, 'said') +
+                await _format_message(ctx, msg_, 'said') +
                 f'**{ctx.message.author} responded:** {" ".join(reply)}'
             )
         if not reply:
             output = (
-                await format_message(ctx, msg_, 'said') +
+                await _format_message(ctx, msg_, 'said') +
                 f'_via {ctx.message.author}_'
             )
     elif quote:
 
         if reply:
             output = (
-                await format_quote(ctx, msg_) +
+                await _format_quote(ctx, msg_) +
                 f'\n**{ctx.message.author} responded:** {" ".join(reply)}'
             )
         elif not reply:
-            output = await format_quote(ctx, msg_)
+            output = await _format_quote(ctx, msg_)
     else:
         pass
 
     return(output)
 
 # Helper function for WebHook Quote (quoting simple messages)
-async def format_message(ctx, msg_, action):
+async def _format_message(ctx, msg_, action):
     # Figure out the respective times
     current_time = arrow.get(ctx.message.created_at)
     original_message_time = arrow.get(msg_.created_at)
@@ -225,7 +224,7 @@ async def format_message(ctx, msg_, action):
     return(output)
 
 # Helper function for WebHook Quote (quoting quotes)
-async def format_quote(ctx, msg_):
+async def _format_quote(ctx, msg_):
     output = msg_.content
 
     # Identify the response in the quote without a jump url
