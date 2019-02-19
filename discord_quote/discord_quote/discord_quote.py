@@ -397,16 +397,25 @@ async def misquote(ctx , target : discord.User):
         #else:
         #    user = ctx.message.server.get_member(target)
 
-        await bot.send_message(ctx.message.author, ('What would you like to be ' + ' misattributed to ' + user.name + '?'))
+        await ctx.message.author.send(
+          f'What would you like to be misattributed to {user.name}?'
+        )
 
         log.info(log_msg(['sent_message', 'misquote_dm_request', user.name]))
 
         def priv(msg):
             return msg.channel.is_private == True
 
-        reply = await bot.wait_for_message(timeout=60.0,
-                                           author=ctx.message.author,
-                                           check=priv)
+        # Check that this is the right message
+        def pred(m):
+            return (
+                m.author == ctx.message.author 
+                and isinstance(m.channel, discord.DMChannel)
+            )
+        reply = await bot.wait_for('message', check=pred)
+#        reply = await bot.wait_for_message(timeout=60.0,
+#                                           author=ctx.message.author,
+#                                           check=priv)
 
         log.info(log_msg(['received_request',
                           'misquote_response',
@@ -414,18 +423,19 @@ async def misquote(ctx , target : discord.User):
                           ctx.message.channel.name,
                           reply.clean_content]))
 
-        faketime = datetime.datetime.now() - datetime.timedelta(minutes=5)
+        faketime = (
+            datetime.datetime.now() - datetime.timedelta(minutes=5)
+        ).strftime("%Y-%m-%d %H:%M:%S")
 
-        await bot.say('**{0} [{1}] definitely said:** ```{2}```'.format(
-                            user.name,
-                            faketime.strftime("%Y-%m-%d %H:%M:%S"),
-                            reply.clean_content
-                            ))
+        await ctx.channel.send(
+            f'**{user.name} [{faketime}] definitely said:** ```'
+            + reply.clean_content + '```'
+        )
 
         log.info(log_msg(['sent_message',
                           'misquote',
                            user.name,
-                           faketime.strftime('%Y-%m-%d %H:%M:%S'),
+                           faketime,
                            reply.clean_content ]))
 #        else:
 #            yield from bot.say("Insufficient Access")
