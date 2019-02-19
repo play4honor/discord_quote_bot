@@ -217,7 +217,7 @@ async def _format_message(ctx, msg_, action):
     relative_time = original_message_time.humanize(current_time)
 
     output = (
-        f'**{msg_.author} {action} [{relative_time}](<{msg_.jump_url}>):** ```' +
+        f'**{msg_.author.name} {action} [{relative_time}](<{msg_.jump_url}>):** ```' +
         msg_.clean_content +
         '```'
     )
