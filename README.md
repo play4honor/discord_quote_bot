@@ -20,7 +20,7 @@ To get different versions of this bot, you can pull from Docker Hub:
     ```
     sudo docker run --restart unless-stopped \
     -d -e DISCORD_QUOTEBOT_TOKEN=$DISCORD_QUOTEBOT_TOKEN \
-    cyzhang/discord_quote_bot 
+    cyzhang/discord_quote_bot:latest 
     ```
 
 # Additional Details
@@ -40,7 +40,7 @@ We maintain a fully functioning (hopefully!) development branch. We should test 
     ```
     sudo docker run --restart unless-stopped \
         -d -e DISCORD_QUOTEBOT_TOKEN=$DISCORD_QUOTEBOT_DEV_TOKEN \
-        cyzhang/discord_quote_bot 
+        cyzhang/discord_quote_bot:development 
     ```
 
 ## Watchtower
