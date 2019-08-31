@@ -49,9 +49,9 @@ def block_format(message):
     # Insert "> " for block quote formatting
     for offset, i in enumerate(insert_idx):
         
-        message = message[:i + (2 * offset) + 1] + 
-                  "> " +
-                  message[i + (2 * offset) + 1:]
+        message = (message[:i + (2 * offset) + 1] + 
+                  "> " + 
+                  message[i + (2 * offset) + 1:])
         
     return(message)
 
