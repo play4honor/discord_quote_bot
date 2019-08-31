@@ -39,6 +39,22 @@ def log_msg(data):
     tmp = [str(d).replace(u'\u241e', ' ') for d in data]
     return u'\u241e'.join(tmp)
 
+# Format a message as a block quotes.
+def block_format(message):
+    
+    # Find new line positions
+    insert_idx = [pos for pos, char in enumerate(message) if char == "\n"]
+    insert_idx.insert(0, -1)
+    
+    # Insert "> " for block quote formatting
+    for offset, i in enumerate(insert_idx):
+        
+        message = message[:i + (2 * offset) + 1] + 
+                  "> " +
+                  message[i + (2 * offset) + 1:]
+        
+    return(message)
+
 # Code
 description = '''
             A Bot to provide Basic Quoting functionality for Discord
@@ -215,8 +231,8 @@ async def _format_message(ctx, msg_, action):
 
     output = (
         f"**{msg_.author.name} {action} " +
-        f"[{relative_time}](<{msg_.jump_url}>):** "+
-        f"```{msg_.clean_content}```"
+        f"[{relative_time}](<{msg_.jump_url}>):**\n"+
+        block_format(msg_.clean_content)
     )
 
     return(output)
@@ -317,7 +333,8 @@ async def bot_quote(ctx, msg_, *reply : str):
         # Simplest case, just quoting a non-quotebot message, with no reply
         output = (
             f"**{author} [{message_time}] said:** _via " +
-            f"{ctx.message.author.name}_ ```{clean_content}```"
+            f"{ctx.message.author.name}_\n" + 
+            block_format(clean_content)
         )
     elif not reply and quote:
         log.info(log_msg(['formatting_quote', 'noreply|quote']))
@@ -359,7 +376,9 @@ async def bot_quote(ctx, msg_, *reply : str):
 
         output = (
                 f"**{author} [{msg_.created_at.strftime('%Y-%m-%d %H:%M:%S')}] " +
-                f"said:** ```{clean_content}```" +
+                f"said:** \n" +
+                block_format(clean_content) +
+                "\n" +
                 f"**{ctx.message.author.name} " +
                 f"[{ctx.message.created_at.strftime('%Y-%m-%d %H:%M:%S')}] " +
                 f"responded:** {' '.join(reply)}"
@@ -420,8 +439,8 @@ async def misquote(ctx , target : discord.User):
         ).strftime("%Y-%m-%d %H:%M:%S")
 
         await ctx.channel.send(
-            f"**{user.name} [{faketime}] definitely said:** ```"
-            + reply.clean_content + '```'
+            f"**{user.name} [{faketime}] definitely said:** \n" +
+            block_format(reply.clean_content)
         )
 
         log.info(log_msg(['sent_message',
