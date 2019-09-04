@@ -114,11 +114,22 @@ async def me(ctx, *text : str):
     log.info(log_msg(['deleted_request', ctx.message.id]))
 
 @bot.command()
-async def quote(ctx, msg_id : str, *reply : str):
+async def quote(ctx, *, request:str):
     log.info(log_msg(['received_request',
                       'quote',
                       ctx.message.channel.name,
-                      msg_id]))
+                      ctx.message.author.name,
+                      ctx.message.author.id]))
+
+    # Parse out message id and reply (if it exists)
+    msg_id = request.split(' ')[0]
+    reply = request.split(' ')[1:]
+
+    log.info(log_msg(['parsed_request',
+                      'quote',
+                      ctx.message.channel.name,
+                      msg_id,
+                      reply]))
 
     # Clean up request regardless of success
     await ctx.message.delete()
