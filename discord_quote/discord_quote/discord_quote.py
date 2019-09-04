@@ -113,7 +113,7 @@ async def me(ctx, *text : str):
     await ctx.message.delete()
     log.info(log_msg(['deleted_request', ctx.message.id]))
 
-@bot.command()
+@bot.command(aliases=['q'])
 async def quote(ctx, *, request:str):
     log.info(log_msg(['received_request',
                       'quote',
