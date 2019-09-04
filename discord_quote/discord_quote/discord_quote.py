@@ -232,7 +232,7 @@ async def _format_message(ctx, msg_, action):
     output = (
         f"**{msg_.author.name} {action} " +
         f"[{relative_time}](<{msg_.jump_url}>):**\n"+
-        block_format(msg_.clean_content)
+        block_format(msg_.clean_content) + "\n"
     )
 
     return(output)
