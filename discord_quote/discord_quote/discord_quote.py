@@ -41,18 +41,18 @@ def log_msg(data):
 
 # Format a message as a block quotes.
 def block_format(message):
-    
+
     # Find new line positions
     insert_idx = [pos for pos, char in enumerate(message) if char == "\n"]
     insert_idx.insert(0, -1)
-    
+
     # Insert "> " for block quote formatting
     for offset, i in enumerate(insert_idx):
-        
+
         message = (message[:i + (2 * offset) + 1] + 
                   "> " + 
                   message[i + (2 * offset) + 1:])
-        
+
     return(message)
 
 # Code
