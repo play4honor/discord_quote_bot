@@ -132,8 +132,11 @@ async def quote(ctx, *, request:str):
                       reply]))
 
     # Clean up request regardless of success
-    await ctx.message.delete()
-    log.info(log_msg(['deleted_request', msg_id]))
+    try:
+        await ctx.message.delete()
+        log.info(log_msg(['deleted_request', msg_id]))
+    except Exception as e:
+        log.warning(log_msg(['delete_request_failed', msg_id, e]))
 
     try:
         # Retrieve the message
