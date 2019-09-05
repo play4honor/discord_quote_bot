@@ -110,19 +110,36 @@ async def me(ctx, *text : str):
     log.info(log_msg(['sent_message', 'me', ctx.message.channel.name]))
 
     # Clean up request regardless of success
-    await ctx.message.delete()
-    log.info(log_msg(['deleted_request', ctx.message.id]))
+    try:
+        await ctx.message.delete()
+        log.info(log_msg(['deleted_request', ctx.message.id]))
+    except Exception as e:
+        log.warning(log_msg(['delete_request_failed', ctx.message.id, e]))
 
-@bot.command()
-async def quote(ctx, msg_id : str, *reply : str):
+@bot.command(aliases=['q'])
+async def quote(ctx, *, request:str):
     log.info(log_msg(['received_request',
                       'quote',
                       ctx.message.channel.name,
-                      msg_id]))
+                      ctx.message.author.name,
+                      ctx.message.author.id]))
+
+    # Parse out message id and reply (if it exists)
+    msg_id = request.split(' ')[0]
+    reply = request.split(' ')[1:]
+
+    log.info(log_msg(['parsed_request',
+                      'quote',
+                      ctx.message.channel.name,
+                      msg_id,
+                      reply]))
 
     # Clean up request regardless of success
-    await ctx.message.delete()
-    log.info(log_msg(['deleted_request', msg_id]))
+    try:
+        await ctx.message.delete()
+        log.info(log_msg(['deleted_request', msg_id]))
+    except Exception as e:
+        log.warning(log_msg(['delete_request_failed', msg_id, e]))
 
     try:
         # Retrieve the message
@@ -633,6 +650,72 @@ async def frames(char : str, move : str, situ : str=""):
         log.info(log_msg(['sent_message',
                          'invalid_situation_request',
                           ctx.message.channel.name]))
+
+@bot.command()
+async def test(ctx):
+    # Function for debugging the current status of all the quote commands.
+
+    # --- Helper functions ---
+    async def get_last_real_message():
+        # Get the last message in the channel from a real person.
+        # We need to skip the initial !test request.
+        counter = 0
+        async for elem in ctx.channel.history():
+            if not elem.author.bot:
+                counter += 1
+                if counter > 1:
+                    return(elem)
+
+    async def get_last_message():
+        # Helper function to test quoting quotes
+        # Get the last message in the channel (not including the request)
+        messages = await ctx.channel.history(limit=2).flatten()
+        return(messages[1])
+
+    # --- Tests ---
+    # Get the last real message
+    msg_ = await get_last_real_message()
+
+    # Grab the command
+    quote_cmd = ctx.bot.get_command('quote')
+
+    await ctx.channel.send('|---TESTING QUOTE FUNCTIONS---|')
+    # TEST 1: Quote without a reply
+    await ctx.invoke(quote_cmd, request=f'{msg_.id}')
+
+    # TEST 2: Quote with a reply
+    await ctx.invoke(quote_cmd
+            , request=f'{msg_.id} Testing quote + reply functionality.')
+
+    # TEST 3: Quote a quote without a reply
+    msg_ = await get_last_message()
+    await ctx.invoke(quote_cmd, request=f'{msg_.id}')
+
+    # TEST 4: Quote a quote with a reply
+    msg_ = await get_last_message()
+    await ctx.invoke(quote_cmd
+            , request=f'{msg_.id} Testing quoting a quote, with a reply.')
+
+    # TEST 5: Quote a quote with a reply with a reply with annoying text
+    msg_ = await get_last_message()
+    await ctx.invoke(quote_cmd,
+            request = (
+                f'{msg_.id} Quoting a quote with a reply, with a '+
+                '```codeblock``` in the reply and a double quote \" '+
+                'and a single quote \'.'
+            )
+    )
+
+    # Misquote
+    # This seems annoying to test.
+
+    # TEST 6: Me Function
+    msg_ = await get_last_real_message()
+    me_cmd = ctx.bot.get_command('me')
+    await ctx.invoke(me_cmd, 'is testing the quote-bot.')
+
+    await ctx.channel.send('|---END TESTING QUOTE FUNCTIONS---|')
+
 
 if __name__=='__main__':
     if os.environ['DISCORD_QUOTEBOT_TOKEN']:
