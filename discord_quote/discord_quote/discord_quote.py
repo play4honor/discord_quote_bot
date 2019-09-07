@@ -663,7 +663,7 @@ async def test(ctx):
         async for elem in ctx.channel.history():
             if not elem.author.bot:
                 counter += 1
-                if counter > 1:
+                if counter > 2:
                     return(elem)
 
     async def get_last_message():
