@@ -140,7 +140,9 @@ async def quote(ctx, *, request:str):
         log.info(log_msg(['deleted_request', msg_id]))
     except Exception as e:
         log.warning(log_msg(['delete_request_failed', msg_id, e]))
-
+    
+    msg_ = await ctx.channel.fetch_message(msg_id)
+    log.info(msg_)
     try:
         # Retrieve the message
         msg_ = await ctx.channel.fetch_message(msg_id)
