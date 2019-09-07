@@ -185,6 +185,8 @@ async def quote(ctx, *, request:str):
         log.info(log_msg(['sent_message',
                           'invalid_quote_request',
                           ctx.message.channel.name]))
+    except Exception as e:
+        print(e)
 
 
 # Helper function for quote: gets a WebHook
