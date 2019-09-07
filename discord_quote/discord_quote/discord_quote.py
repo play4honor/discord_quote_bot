@@ -141,8 +141,6 @@ async def quote(ctx, *, request:str):
     except Exception as e:
         log.warning(log_msg(['delete_request_failed', msg_id, e]))
     
-    msg_ = await ctx.channel.fetch_message(msg_id)
-    log.info(msg_)
     try:
         # Retrieve the message
         msg_ = await ctx.channel.fetch_message(msg_id)
@@ -187,9 +185,6 @@ async def quote(ctx, *, request:str):
         log.info(log_msg(['sent_message',
                           'invalid_quote_request',
                           ctx.message.channel.name]))
-    except Exception as e:
-        print(e)
-
 
 # Helper function for quote: gets a WebHook
 async def _get_hook(ctx):
