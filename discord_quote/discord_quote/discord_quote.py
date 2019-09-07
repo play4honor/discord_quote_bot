@@ -143,7 +143,7 @@ async def quote(ctx, *, request:str):
 
     try:
         # Retrieve the message
-        msg_ = await ctx.channel.get_message(msg_id)
+        msg_ = await ctx.channel.fetch_message(msg_id)
         log.info(log_msg(['retrieved_quote',
                       msg_id,
                       ctx.message.channel.name,
@@ -164,7 +164,7 @@ async def quote(ctx, *, request:str):
                 payload={
                     "content":payload,
                     "username" : ctx.guild.me.name,
-                    "avatar_url": ctx.guild.me.avatar_url
+                    "avatar_url": str(ctx.guild.me.avatar_url)
                 }
             )
 
@@ -284,7 +284,7 @@ async def _format_quote(ctx, msg_):
             _new_speaker = _temp[0]
 
             # get the associated old message
-            _old_msg = await ctx.channel.get_message(_temp[2])
+            _old_msg = await ctx.channel.fetch_message(_temp[2])
             log.info(log_msg(['retrieved_quote',
                           _old_msg.id,
                           ctx.message.channel.name,
@@ -663,7 +663,7 @@ async def test(ctx):
         async for elem in ctx.channel.history():
             if not elem.author.bot:
                 counter += 1
-                if counter > 2:
+                if counter > 1:
                     return(elem)
 
     async def get_last_message():
@@ -675,6 +675,8 @@ async def test(ctx):
     # --- Tests ---
     # Get the last real message
     msg_ = await get_last_real_message()
+
+    log.debug(msg_)
 
     # Grab the command
     quote_cmd = ctx.bot.get_command('quote')
