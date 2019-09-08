@@ -39,6 +39,22 @@ def log_msg(data):
     tmp = [str(d).replace(u'\u241e', ' ') for d in data]
     return u'\u241e'.join(tmp)
 
+# Format a message as a block quotes.
+def block_format(message):
+
+    # Find new line positions
+    insert_idx = [pos for pos, char in enumerate(message) if char == "\n"]
+    insert_idx.insert(0, -1)
+
+    # Insert "> " for block quote formatting
+    for offset, i in enumerate(insert_idx):
+
+        message = (message[:i + (2 * offset) + 1] + 
+                  "> " + 
+                  message[i + (2 * offset) + 1:])
+
+    return(message)
+
 # Code
 description = '''
             A Bot to provide Basic Quoting functionality for Discord
@@ -94,23 +110,40 @@ async def me(ctx, *text : str):
     log.info(log_msg(['sent_message', 'me', ctx.message.channel.name]))
 
     # Clean up request regardless of success
-    await ctx.message.delete()
-    log.info(log_msg(['deleted_request', ctx.message.id]))
+    try:
+        await ctx.message.delete()
+        log.info(log_msg(['deleted_request', ctx.message.id]))
+    except Exception as e:
+        log.warning(log_msg(['delete_request_failed', ctx.message.id, e]))
 
-@bot.command()
-async def quote(ctx, msg_id : str, *reply : str):
+@bot.command(aliases=['q'])
+async def quote(ctx, *, request:str):
     log.info(log_msg(['received_request',
                       'quote',
                       ctx.message.channel.name,
-                      msg_id]))
+                      ctx.message.author.name,
+                      ctx.message.author.id]))
+
+    # Parse out message id and reply (if it exists)
+    msg_id = request.split(' ')[0]
+    reply = request.split(' ')[1:]
+
+    log.info(log_msg(['parsed_request',
+                      'quote',
+                      ctx.message.channel.name,
+                      msg_id,
+                      reply]))
 
     # Clean up request regardless of success
-    await ctx.message.delete()
-    log.info(log_msg(['deleted_request', msg_id]))
-
+    try:
+        await ctx.message.delete()
+        log.info(log_msg(['deleted_request', msg_id]))
+    except Exception as e:
+        log.warning(log_msg(['delete_request_failed', msg_id, e]))
+    
     try:
         # Retrieve the message
-        msg_ = await ctx.channel.get_message(msg_id)
+        msg_ = await ctx.channel.fetch_message(msg_id)
         log.info(log_msg(['retrieved_quote',
                       msg_id,
                       ctx.message.channel.name,
@@ -131,7 +164,7 @@ async def quote(ctx, msg_id : str, *reply : str):
                 payload={
                     "content":payload,
                     "username" : ctx.guild.me.name,
-                    "avatar_url": ctx.guild.me.avatar_url
+                    "avatar_url": str(ctx.guild.me.avatar_url)
                 }
             )
 
@@ -152,7 +185,6 @@ async def quote(ctx, msg_id : str, *reply : str):
         log.info(log_msg(['sent_message',
                           'invalid_quote_request',
                           ctx.message.channel.name]))
-
 
 # Helper function for quote: gets a WebHook
 async def _get_hook(ctx):
@@ -215,8 +247,8 @@ async def _format_message(ctx, msg_, action):
 
     output = (
         f"**{msg_.author.name} {action} " +
-        f"[{relative_time}](<{msg_.jump_url}>):** "+
-        f"```{msg_.clean_content}```"
+        f"[{relative_time}](<{msg_.jump_url}>):**\n"+
+        block_format(msg_.clean_content) + "\n"
     )
 
     return(output)
@@ -251,7 +283,7 @@ async def _format_quote(ctx, msg_):
             _new_speaker = _temp[0]
 
             # get the associated old message
-            _old_msg = await ctx.channel.get_message(_temp[2])
+            _old_msg = await ctx.channel.fetch_message(_temp[2])
             log.info(log_msg(['retrieved_quote',
                           _old_msg.id,
                           ctx.message.channel.name,
@@ -317,7 +349,8 @@ async def bot_quote(ctx, msg_, *reply : str):
         # Simplest case, just quoting a non-quotebot message, with no reply
         output = (
             f"**{author} [{message_time}] said:** _via " +
-            f"{ctx.message.author.name}_ ```{clean_content}```"
+            f"{ctx.message.author.name}_\n" + 
+            block_format(clean_content)
         )
     elif not reply and quote:
         log.info(log_msg(['formatting_quote', 'noreply|quote']))
@@ -359,7 +392,9 @@ async def bot_quote(ctx, msg_, *reply : str):
 
         output = (
                 f"**{author} [{msg_.created_at.strftime('%Y-%m-%d %H:%M:%S')}] " +
-                f"said:** ```{clean_content}```" +
+                f"said:** \n" +
+                block_format(clean_content) +
+                "\n" +
                 f"**{ctx.message.author.name} " +
                 f"[{ctx.message.created_at.strftime('%Y-%m-%d %H:%M:%S')}] " +
                 f"responded:** {' '.join(reply)}"
@@ -420,8 +455,8 @@ async def misquote(ctx , target : discord.User):
         ).strftime("%Y-%m-%d %H:%M:%S")
 
         await ctx.channel.send(
-            f"**{user.name} [{faketime}] definitely said:** ```"
-            + reply.clean_content + '```'
+            f"**{user.name} [{faketime}] definitely said:** \n" +
+            block_format(reply.clean_content)
         )
 
         log.info(log_msg(['sent_message',
@@ -614,6 +649,74 @@ async def frames(char : str, move : str, situ : str=""):
         log.info(log_msg(['sent_message',
                          'invalid_situation_request',
                           ctx.message.channel.name]))
+
+@bot.command()
+async def test(ctx):
+    # Function for debugging the current status of all the quote commands.
+
+    # --- Helper functions ---
+    async def get_last_real_message():
+        # Get the last message in the channel from a real person.
+        # We need to skip the initial !test request.
+        counter = 0
+        async for elem in ctx.channel.history():
+            if not elem.author.bot:
+                counter += 1
+                if counter > 1:
+                    return(elem)
+
+    async def get_last_message():
+        # Helper function to test quoting quotes
+        # Get the last message in the channel (not including the request)
+        messages = await ctx.channel.history(limit=2).flatten()
+        return(messages[1])
+
+    # --- Tests ---
+    # Get the last real message
+    msg_ = await get_last_real_message()
+
+    log.debug(msg_)
+
+    # Grab the command
+    quote_cmd = ctx.bot.get_command('quote')
+
+    await ctx.channel.send('|---TESTING QUOTE FUNCTIONS---|')
+    # TEST 1: Quote without a reply
+    await ctx.invoke(quote_cmd, request=f'{msg_.id}')
+
+    # TEST 2: Quote with a reply
+    await ctx.invoke(quote_cmd
+            , request=f'{msg_.id} Testing quote + reply functionality.')
+
+    # TEST 3: Quote a quote without a reply
+    msg_ = await get_last_message()
+    await ctx.invoke(quote_cmd, request=f'{msg_.id}')
+
+    # TEST 4: Quote a quote with a reply
+    msg_ = await get_last_message()
+    await ctx.invoke(quote_cmd
+            , request=f'{msg_.id} Testing quoting a quote, with a reply.')
+
+    # TEST 5: Quote a quote with a reply with a reply with annoying text
+    msg_ = await get_last_message()
+    await ctx.invoke(quote_cmd,
+            request = (
+                f'{msg_.id} Quoting a quote with a reply, with a '+
+                '```codeblock``` in the reply and a double quote \" '+
+                'and a single quote \'.'
+            )
+    )
+
+    # Misquote
+    # This seems annoying to test.
+
+    # TEST 6: Me Function
+    msg_ = await get_last_real_message()
+    me_cmd = ctx.bot.get_command('me')
+    await ctx.invoke(me_cmd, 'is testing the quote-bot.')
+
+    await ctx.channel.send('|---END TESTING QUOTE FUNCTIONS---|')
+
 
 if __name__=='__main__':
     if os.environ['DISCORD_QUOTEBOT_TOKEN']:
