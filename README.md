@@ -65,7 +65,8 @@ You can use the Watchtower image to automatically re-deploy your bot when there 
     - For the main distribution, clone this repo ([here](https://github.com/zhangchuck/p4h_webhooks))
 3. Run Webhook in terminal
     ```
-    sudo -E webhook -hooks p4h_webhooks/hooks.json -verbose
+    #sudo -E webhook -hooks p4h_webhooks/hooks.json -verbose
+    sudo -E ~/go/bin/webhook -hooks p4h_webhooks/hooks.json - verbose > p4h_webhooks.log &
     ```
 4. Point the webhook in [Docker Hub](https://cloud.docker.com/repository/docker/cyzhang/discord_quote_bot/webhooks) to the deploy machine's endpoint (e.g., `http://ec2-[id].compute.amazonaws.com:9000/hooks/redeploy-quotebot/`)
 
