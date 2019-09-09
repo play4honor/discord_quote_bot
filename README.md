@@ -29,6 +29,9 @@ To get different versions of this bot, you can pull from Docker Hub:
 
 - You may need to enable `Manage Webhooks` to get full functionality.
 
+
+# Deployment
+
 ## Development Branch
 
 We maintain a fully functioning (hopefully!) development branch. We should test out changes on this branch before merging into the master. To start up the `quote-bot-dev` bot, follow this set of modified instructions:  
@@ -52,6 +55,15 @@ You can use the Watchtower image to automatically re-deploy your bot when there 
       --name watchtower \
       -v /var/run/docker.sock:/var/run/docker.sock \
       v2tec/watchtower --interval 10 cyzhang/discord_quote_bot cyzhang/discord_quote_bot:development
+    ```
+
+## Docker Hub Webhook
+
+- Setup [Webhook](https://github.com/adnanh/webhook)
+- Get the deploy script (for the main distribution, you can find it [here]())
+- Run in terminal
+    ```
+    sudo -E webhook -hooks p4h/hooks.json -verbose
     ```
 
 ## Personal Testing Bot
