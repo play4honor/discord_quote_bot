@@ -60,13 +60,14 @@ You can use the Watchtower image to automatically re-deploy your bot when there 
 ## Docker Hub Webhook
 
 1. Install [Webhook](https://github.com/adnanh/webhook) on the deploy machine
-    - Make sure the port Webhook is going to listen on (e.g., port `9000` is open)
-2. Get the deploy script (for the main distribution, clone this repo [here]())
+    - Make sure you have opened the port that Webhook is going to listen on (e.g., port `9000`)
+2. Get the `hooks.json` and deploy script
+    - For the main distribution, clone this repo ([here](https://github.com/zhangchuck/p4h_webhooks))
 3. Run Webhook in terminal
     ```
-    sudo -E webhook -hooks p4h/hooks.json -verbose
+    sudo -E webhook -hooks p4h_webhooks/hooks.json -verbose
     ```
-4. Point the webhook in [Docker Hub](https://cloud.docker.com/repository/docker/cyzhang/discord_quote_bot/webhooks) to the deploy machine's endpoint (e.g., `http://ec2-[id].compute.amazonaws.com:9000`)
+4. Point the webhook in [Docker Hub](https://cloud.docker.com/repository/docker/cyzhang/discord_quote_bot/webhooks) to the deploy machine's endpoint (e.g., `http://ec2-[id].compute.amazonaws.com:9000/hooks/redeploy-quotebot/`)
 
 ## Personal Testing Bot
 If you want to run a personal version of the bot for testing your own changes, you can do this without using the docker images.
