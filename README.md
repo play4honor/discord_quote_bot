@@ -60,6 +60,7 @@ You can use the Watchtower image to automatically re-deploy your bot when there 
 ## Docker Hub Webhook
 
 1. Install [Webhook](https://github.com/adnanh/webhook) on the deploy machine
+    - Make sure the port Webhook is going to listen on (e.g., port `9000` is open)
 2. Get the deploy script (for the main distribution, clone this repo [here]())
 3. Run Webhook in terminal
     ```
