@@ -131,7 +131,11 @@ async def quote(ctx, *, request:str):
     if '\r' in msg_id or '\n' in msg_id:
       # If weird users decide to separate the msg_id from the reply using a line return
       # clean it up.
-      _temp = msg_id.split('\r')
+      if '\r' in msg_id:
+        _temp = msg_id.split('\r')
+      else:
+        _temp = msg_id.split('\n')
+
       msg_id = _temp[0].trim()
       reply = [_temp[1].trim()] + request.split(' ')[1:]
 
