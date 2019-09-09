@@ -128,6 +128,17 @@ async def quote(ctx, *, request:str):
     msg_id = request.split(' ')[0]
     reply = request.split(' ')[1:]
 
+    if '\r' in msg_id or '\n' in msg_id:
+      # If weird users decide to separate the msg_id from the reply using a line return
+      # clean it up.
+      if '\r' in msg_id:
+        _temp = msg_id.split('\r')
+      else:
+        _temp = msg_id.split('\n')
+
+      msg_id = _temp[0].strip()
+      reply = [_temp[1].strip()] + request.split(' ')[1:]
+
     log.info(log_msg(['parsed_request',
                       'quote',
                       ctx.message.channel.name,
