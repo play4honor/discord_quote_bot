@@ -79,7 +79,7 @@ async def on_ready():
                 )
             )
 
-            await channel.send('yo we in there')
+#            await channel.send('yo we in there')
 
 
 #@bot.event
