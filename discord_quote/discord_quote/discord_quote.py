@@ -468,7 +468,7 @@ async def misquote(ctx , *target : discord.User):
 
         # predict author if unspecified
         if target:
-            response = (f"**{target.name} [{faketime:'%Y-%m-%d %H:%M:%S'}] definitely said:** \n" +
+            response = (f"**{target.name} [{faketime.strftime('%Y-%m-%d %H:%M:%S')}] definitely said:** \n" +
                             block_format(reply.clean_content))
         else:
             user_id, likelihood = author.get_best_author_id(reply.clean_content, get_utc_hour(faketime))
