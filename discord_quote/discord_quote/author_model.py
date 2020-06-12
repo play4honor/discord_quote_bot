@@ -6,7 +6,7 @@ _DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 print(os.listdir())
 
-_CHECKPOINT = torch.load("Candidate_1_Adam_06701")
+_CHECKPOINT = torch.load("Candidate_1_Adam_06701", map_location=_DEVICE)
 _VOCAB = _CHECKPOINT['vocab']
 
 _NET = AuthorNet(24, 11, _VOCAB).to(_DEVICE)
