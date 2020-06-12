@@ -487,7 +487,7 @@ async def misquote(ctx , *target : discord.User):
                             user,
                             likelihood]))
 
-            response = (f"**{name} [{faketime.strftime('%Y-%m-%d %H:%M:%S')}] probably said *(Chance: {likelihood*100:.2f}%)*:** \n" +
+            response = (f"**{name} [{faketime.strftime('%Y-%m-%d %H:%M:%S')}] probably *({likelihood*100:.2f}%)* said:** \n" +
                             block_format(reply.clean_content)
                         )
 
