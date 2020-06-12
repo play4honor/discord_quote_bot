@@ -435,20 +435,23 @@ async def misquote(ctx , *target : discord.User):
             m.author == ctx.message.author 
             and isinstance(m.channel, discord.DMChannel)
         )
-
-    log.info(log_msg(['received_request',
-                    'misquote',
-                    ctx.message.author.name,
-                    ctx.message.channel.name,
-                    target.name]))
-
     try:
-        # DM requester to get message to misattribute
-        if target:
-            name = target.name 
+        if len(target) > 1:
+            raise ValueError("Must provide 0 or 1 authors")
+
+        if len(target) == 1:
+            name = target[0].name
         else:
             name = 'a predictively assigned user'
 
+        log.info(log_msg(['received_request',
+                        'misquote',
+                        ctx.message.author.name,
+                        ctx.message.channel.name,
+                        name]))
+
+    
+        # DM requester to get message to misattribute
         await ctx.message.author.send(
             f"What would you like to be misattributed to {name}?"
         )
@@ -467,18 +470,18 @@ async def misquote(ctx , *target : discord.User):
         )
 
         # predict author if unspecified
-        if target:
-            response = (f"**{target.name} [{faketime.strftime('%Y-%m-%d %H:%M:%S')}] definitely said:** \n" +
+        if len(target) == 1:
+            response = (f"**{name} [{faketime.strftime('%Y-%m-%d %H:%M:%S')}] definitely said:** \n" +
                             block_format(reply.clean_content))
         else:
             user_id, likelihood = author.get_best_author_id(reply.clean_content, get_utc_hour(faketime))
-            target = bot.fetch_user(user_id)
+            user = bot.fetch_user(user_id)
             log.info(log_msg(['predicted_author',
                             'best_author_id',
                             user,
                             likelihood]))
 
-            response = (f"**{target.name} [{faketime.strftime('%Y-%m-%d %H:%M:%S')}] probably said:** \n" +
+            response = (f"**{user.name} [{faketime.strftime('%Y-%m-%d %H:%M:%S')}] probably said:** \n" +
                             block_format(reply.clean_content) +
                             f" (Chance: {likelihood*100:.2f}%)")
 
