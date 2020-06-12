@@ -1,4 +1,5 @@
 import datetime
+import pytz
 import discord
 from discord.ext import commands
 import asyncio
@@ -472,18 +473,23 @@ async def misquote(ctx , *target : discord.User):
         # predict author if unspecified
         if len(target) == 1:
             response = (f"**{name} [{faketime.strftime('%Y-%m-%d %H:%M:%S')}] definitely said:** \n" +
-                            block_format(reply.clean_content))
+                            block_format(reply.clean_content)
+                        )
         else:
-            user_id, likelihood = author.get_best_author_id(reply.clean_content, get_utc_hour(faketime))
-            user = bot.fetch_user(user_id)
+            log.info(log_msg(['no_requested_author']))
+
+            user_id, likelihood = author.get_best_author_id(reply.clean_content, faketime.astimezone(pytz.UTC).hour)
+            user = await bot.fetch_user(user_id)
+            name = user.name
+            
             log.info(log_msg(['predicted_author',
                             'best_author_id',
                             user,
                             likelihood]))
 
-            response = (f"**{user.name} [{faketime.strftime('%Y-%m-%d %H:%M:%S')}] probably said:** \n" +
-                            block_format(reply.clean_content) +
-                            f" (Chance: {likelihood*100:.2f}%)")
+            response = (f"**{name} [{faketime.strftime('%Y-%m-%d %H:%M:%S')}] probably said *(Chance: {likelihood*100:.2f}%)*:** \n" +
+                            block_format(reply.clean_content)
+                        )
 
         await ctx.channel.send(
             response
@@ -491,7 +497,7 @@ async def misquote(ctx , *target : discord.User):
 
         log.info(log_msg(['sent_message',
                           'misquote',
-                           user.name,
+                           name,
                            faketime,
                            response]))
 
