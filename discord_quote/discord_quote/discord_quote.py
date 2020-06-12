@@ -427,7 +427,7 @@ async def bot_quote(ctx, msg_, *reply : str):
 
     log.info(log_msg(['sent_message', 'quote', ctx.message.channel.name]))
 
-@bot.command(pass_context=True)
+@bot.command()
 async def misquote(ctx , *target : discord.User):
     # Helper to check that this is the right message
     def pred(m):
