@@ -10,6 +10,8 @@ import os
 import arrow
 import random
 
+import author_model as author
+
 # Configure logging
 log = logging.getLogger(__name__)
 fmt = logging.Formatter(u'\u241e'.join(['%(asctime)s',
@@ -435,36 +437,25 @@ async def misquote(ctx , *target : discord.User):
             and isinstance(m.channel, discord.DMChannel)
         )
 
+    log.info(log_msg(['received_request',
+                    'misquote',
+                    ctx.message.author.name,
+                    ctx.message.channel.name,
+                    target.name]))
+
     try:
         # DM requester to get message to misattribute
         if target:
-            log.info(log_msg(['received_request',
-                      'misquote',
-                      ctx.message.author.name,
-                      ctx.message.channel.name,
-                      target.name]))
-
-            await ctx.message.author.send(
-            f"What would you like to be misattributed to {target.name}?"
-            )
-
-            log.info(log_msg(['sent_message', 'misquote_dm_request', target.name]))
-
+            name = target.name 
         else:
-            log.info(log_msg(['received_request',
-                      'misquote',
-                      ctx.message.author.name,
-                      ctx.message.channel.name,
-                      'predict_author']))
+            name = 'a predictively assigned user'
 
-            await ctx.message.author.send(
-            f"What would you like to be misattributed? Author will be assigned based on message."
-            )
-
-            log.info(log_msg(['sent_message', 'misquote_dm_request', 'predict_author']))
+        await ctx.message.author.send(
+            f"What would you like to be misattributed to {name}?"
+        )
+        log.info(log_msg(['sent_message', 'misquote_dm_request', ctx.message.author.name]))
 
         reply = await bot.wait_for('message', check=pred, timeout=60)
-
         log.info(log_msg(['received_request',
                           'misquote_response',
                           ctx.message.author.name,
@@ -478,25 +469,29 @@ async def misquote(ctx , *target : discord.User):
 
         # predict author if unspecified
         if target:
-            user = target
+            response = f"**{target.name} [{faketime.strftime("%Y-%m-%d %H:%M:%S")}] definitely said:** \n" +
+                            block_format(reply.clean_content)
         else:
-            user_id, likelihood = get_best_author_id(reply.clean_content, get_utc_hour(faketime))
-            user = bot.fetch_user(user_id)
+            user_id, likelihood = author.get_best_author_id(reply.clean_content, get_utc_hour(faketime))
+            target = bot.fetch_user(user_id)
             log.info(log_msg(['predicted_author',
-                          'best_author_id',
-                          user,
-                          likelihood]))
+                            'best_author_id',
+                            user,
+                            likelihood]))
+
+            response = f"**{target.name} [{faketime.strftime("%Y-%m-%d %H:%M:%S")}] probably said:** \n" +
+                            block_format(reply.clean_content) +
+                            f" (Chance: {likelihood*100:.2f})"
 
         await ctx.channel.send(
-            f"**{user.name} [{faketime.strftime("%Y-%m-%d %H:%M:%S")}] definitely said:** \n" +
-            block_format(reply.clean_content)
+            response
         )
 
         log.info(log_msg(['sent_message',
                           'misquote',
                            user.name,
                            faketime,
-                           reply.clean_content ]))
+                           response]))
 
     except discord.ext.commands.errors.BadArgument:
         log.warning(log_msg(['user_not_found',
