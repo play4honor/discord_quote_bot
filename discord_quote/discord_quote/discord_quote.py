@@ -465,7 +465,7 @@ async def misquote(ctx , *target : discord.User):
 
         # predict author if unspecified
         if len(target) == 1:
-            response = (f"**{name} definitely said {fakediff.seconds/60} minutes ago:** \n" +
+            response = (f"**{name} definitely said {int(fakediff.seconds/60)} minutes ago:** \n" +
                             block_format(reply.clean_content)
                         )
         else:
@@ -481,7 +481,7 @@ async def misquote(ctx , *target : discord.User):
                             likelihood]))
 
             response = (f"**{name} probably *({likelihood*100:.2f}%)* said " +
-                            f"{fakediff.seconds/60} minutes ago:** \n" +
+                            f"{int(fakediff.seconds/60)} minutes ago:** \n" +
                             block_format(reply.clean_content)
                         )
 
