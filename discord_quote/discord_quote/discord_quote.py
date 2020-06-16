@@ -42,11 +42,6 @@ def log_msg(data):
     tmp = [str(d).replace(u'\u241e', ' ') for d in data]
     return u'\u241e'.join(tmp)
 
-def get_utc_hour(timestamp):
-    timestamp = int(timestamp)/1000
-    time = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
-    return time.hour
-
 # Format a message as a block quotes.
 def block_format(message):
 
