@@ -1,5 +1,4 @@
 import datetime
-import pytz
 import discord
 from discord.ext import commands
 import asyncio
@@ -466,19 +465,18 @@ async def misquote(ctx , *target : discord.User):
                           reply.clean_content]))
 
         # Generate Fake Timestamp for Message
-        faketime = (
-            datetime.datetime.now() - datetime.timedelta(minutes=random.randint(0, 60))
-        )
+        fakediff = datetime.timedelta(minutes=random.randint(2, 59))
+        faketime = datetime.datetime.utcnow() - fakediff
 
         # predict author if unspecified
         if len(target) == 1:
-            response = (f"**{name} [{faketime.strftime('%Y-%m-%d %H:%M:%S')}] definitely said:** \n" +
+            response = (f"**{name} definitely said {fakediff.seconds/60} minutes ago:** \n" +
                             block_format(reply.clean_content)
                         )
         else:
             log.info(log_msg(['no_requested_author']))
 
-            user_id, likelihood = author.get_best_author_id(reply.clean_content, faketime.astimezone(pytz.UTC).hour)
+            user_id, likelihood = author.get_best_author_id(reply.clean_content, faketime.hour)
             user = await bot.fetch_user(user_id)
             name = user.name
             
@@ -487,7 +485,8 @@ async def misquote(ctx , *target : discord.User):
                             user,
                             likelihood]))
 
-            response = (f"**{name} [{faketime.strftime('%Y-%m-%d %H:%M:%S')}] probably *({likelihood*100:.2f}%)* said:** \n" +
+            response = (f"**{name} probably *({likelihood*100:.2f}%)* said " +
+                            f"{fakediff.seconds/60} minutes ago:** \n" +
                             block_format(reply.clean_content)
                         )
 
