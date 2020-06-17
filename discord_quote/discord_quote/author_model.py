@@ -1,10 +1,8 @@
 import torch
-import os
+import re
 from AuthorNet import AuthorNet
 
 _DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-print(os.listdir())
 
 _CHECKPOINT = torch.load("Candidate_1_Adam_06701", map_location=_DEVICE)
 _VOCAB = _CHECKPOINT['vocab']
@@ -26,6 +24,20 @@ _AUTHOR_DICT = {0: 106923035595948032,
                 9: 113083395667464192,
                 10: 106967980818042880}
 
+def text_preprocess(msg_text):
+
+    # Remove emotes
+    msg = re.sub(r"([\<]).*?([\>])", "", msg_text).strip()
+
+    # Pad punctuation with spaces
+    msg = re.sub(r"([,.!?\(\)\[\]\{\}:;])", r" \1 ", msg)
+
+    # Remove some markdown characters
+    msg = re.sub(r"([`_*])", r"", msg)
+
+    # lower case
+    return msg.lower()
+
 def msg_to_input(msg_text, hour, vocab):
     
     # One Hot Encoding of Hour
@@ -33,6 +45,9 @@ def msg_to_input(msg_text, hour, vocab):
     hour_one_hot[hour] = 1
     
     non_text_tensor = torch.tensor(hour_one_hot).float()
+
+    # Preprocess text
+    msg_text = text_preprocess(msg_text)
 
     # Tokenize Message
     tokens = msg_text.split()
