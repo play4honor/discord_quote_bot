@@ -8,6 +8,9 @@ import logging
 import sys
 import os
 import arrow
+import random
+
+import author_model as author
 
 # Configure logging
 log = logging.getLogger(__name__)
@@ -391,7 +394,7 @@ async def bot_quote(ctx, msg_, *reply : str):
         if _last_response:
             clean_content = clean_content.replace(
                     _last_response.group(1),
-                    f"[{_last_response.group(1)}({jump_url})]"
+                    f"[{_last_response.group(1)}({msg_.jump_url})]"
             )
 
         # Reply to a quotebot quote with a reply
@@ -419,249 +422,90 @@ async def bot_quote(ctx, msg_, *reply : str):
 
     log.info(log_msg(['sent_message', 'quote', ctx.message.channel.name]))
 
-@bot.command(pass_context=True)
-async def misquote(ctx , target : discord.User):
-
-    log.info(log_msg(['received_request',
-                      'misquote',
-                      ctx.message.author.name,
-                      ctx.message.channel.name,
-                      target.name]))
-
-    try:
-#        if ctx.message.author.permissions_in(ctx.message.channel.name).administrator:
-
-        user = target
-        #if target[1] == "@":
-        #    user = target
-        #else:
-        #    user = ctx.message.server.get_member(target)
-
-        await ctx.message.author.send(
-          f"What would you like to be misattributed to {user.name}?"
+@bot.command()
+async def misquote(ctx , *target : discord.User):
+    # Helper to check that this is the right message
+    def pred(m):
+        return (
+            m.author == ctx.message.author 
+            and isinstance(m.channel, discord.DMChannel)
         )
+    try:
+        if len(target) > 1:
+            raise ValueError("Must provide 0 or 1 authors")
 
-        log.info(log_msg(['sent_message', 'misquote_dm_request', user.name]))
+        if len(target) == 1:
+            name = target[0].name
+        else:
+            name = 'a predictively assigned user'
 
-        def priv(msg):
-            return msg.channel.is_private == True
+        log.info(log_msg(['received_request',
+                        'misquote',
+                        ctx.message.author.name,
+                        ctx.message.channel.name,
+                        name]))
 
-        # Check that this is the right message
-        def pred(m):
-            return (
-                m.author == ctx.message.author 
-                and isinstance(m.channel, discord.DMChannel)
-            )
+    
+        # DM requester to get message to misattribute
+        await ctx.message.author.send(
+            f"What would you like to be misattributed to {name}?"
+        )
+        log.info(log_msg(['sent_message', 'misquote_dm_request', ctx.message.author.name]))
+
         reply = await bot.wait_for('message', check=pred, timeout=60)
-#        reply = await bot.wait_for_message(timeout=60.0,
-#                                           author=ctx.message.author,
-#                                           check=priv)
-
         log.info(log_msg(['received_request',
                           'misquote_response',
                           ctx.message.author.name,
                           ctx.message.channel.name,
                           reply.clean_content]))
 
-        faketime = (
-            datetime.datetime.now() - datetime.timedelta(minutes=5)
-        ).strftime("%Y-%m-%d %H:%M:%S")
+        # Generate Fake Timestamp for Message
+        fakediff = datetime.timedelta(minutes=random.randint(2, 59))
+        faketime = datetime.datetime.utcnow() - fakediff
+
+        # predict author if unspecified
+        if len(target) == 1:
+            response = (f"**{name} definitely said {int(fakediff.seconds/60)} minutes ago:** \n" +
+                            block_format(reply.clean_content)
+                        )
+        else:
+            log.info(log_msg(['no_requested_author']))
+
+            user_id, likelihood = author.get_best_author_id(reply.clean_content, faketime.hour)
+            user = await bot.fetch_user(user_id)
+            name = user.name
+            
+            log.info(log_msg(['predicted_author',
+                            'best_author_id',
+                            user,
+                            likelihood]))
+
+            response = (f"**{name} probably *({likelihood*100:.2f}%)* said " +
+                            f"{int(fakediff.seconds/60)} minutes ago:** \n" +
+                            block_format(reply.clean_content)
+                        )
 
         await ctx.channel.send(
-            f"**{user.name} [{faketime}] definitely said:** \n" +
-            block_format(reply.clean_content)
+            response
         )
 
         log.info(log_msg(['sent_message',
                           'misquote',
-                           user.name,
+                           name,
                            faketime,
-                           reply.clean_content ]))
-#        else:
-#            yield from bot.say("Insufficient Access")
+                           response]))
 
     except discord.ext.commands.errors.BadArgument:
         log.warning(log_msg(['user_not_found',
                              target,
                              ctx.message.author.name]))
 
-        await bot.say("User not found")
+        await ctx.message.author.send("User not found")
 
         log.info(log_msg(['sent_message',
                           'invalid_misquote_request',
                           ctx.message.channel.name]))
 
-@bot.command()
-async def frames(char : str, move : str, situ : str=""):
-    log.info(log_msg(['received_request',
-                      'frames',
-                      char,
-                      move,
-                      situ]))
-    try:
-        c = char.capitalize()
-        d,b = move.lower().split('.')
-        s = situ.lower()
-
-        # Dictionaries
-        char_names = {'Chun-li': 'Chun-Li',
-                      'Chun': 'Chun-Li',
-                      'Chunli': 'Chun-Li',
-                      'Youngzeku':'Zeku (Young)',
-                      'Yzeku':'Zeku (Young)',
-                      'Fang':'F.A.N.G',
-                      'Oldzeku':'Zeku (Old)',
-                      'Ozeku':'Zeku (Old)',
-                      'Boxer':'Balrog',
-                      'Claw':'Vega',
-                      'R.mika':'R.Mika',
-                      'Mika':'R.Mika',
-                      'M.bison':'M.Bison',
-                      'Bison':'M.Bison',
-                      'Bipson':'M.Bison',
-                      'Dictator':'M.Bison'}
-
-        directions = {'stand':'stand',
-                      '5':'stand',
-                      's':'stand',
-                      'st':'stand',
-                      'crouch':'crouch',
-                      '2':'crouch',
-                      'c':'crouch',
-                      'cr':'crouch',
-                      'jump':'jump',
-                      '8':'jump',
-                      'j':'jump'}
-
-        buttons = {'hk':'HK',
-                   'heavy kick':'HK',
-                   'roundhouse':'HK',
-                   'mk':'MK',
-                   'medium kick':'MK',
-                   'forward':'MK',
-                   'lk':'LK',
-                   'light kick':'LK',
-                   'short':'LK',
-                   'hp':'HP',
-                   'heavy punch':'HP',
-                   'fierce':'HP',
-                   'mp':'MP',
-                   'medium punch':'MP',
-                   'strong':'MP',
-                   'lp':'LP',
-                   'light punch':'LP',
-                   'jab':'LP'}
-
-        # Select Move
-        if c in char_names.keys():
-            char = char_names[c]
-        else:
-            char = c
-        move_name = ' '.join([directions[d], buttons[b]])
-        move = moves[char]['moves']['normal'][move_name]
-
-        # Responses for startup, active, recovery
-        if s in ('block', 'hit'):
-            if s == 'block':
-                frames = move['onBlock']
-
-            if s == 'hit':
-                frames = move['onHit']
-
-            if frames > 0:
-                await bot.say("{0}'s {1} is **+{2}** on {3}".format(
-                    char,
-                    move_name,
-                    str(frames),
-                    s))
-
-            elif frames == 0:
-                await bot.say("{0}'s {1} is **EVEN** on {3}".format(
-                    char,
-                    move_name,
-                    s))
-
-            else:
-                await bot.say("{0}'s {1} is **{2}** on {3}".format(
-                    char,
-                    move_name,
-                    str(frames),
-                    s))
-
-        elif s in ('startup', 'recovery'):
-            frames = move[s]
-            await bot.say("{0}'s {1} has **{2}** frames of {3}.".format(
-                                char,
-                                move_name,
-                                str(frames),
-                                s))
-
-        elif s == 'active':
-            frames = move[s]
-            await bot.say("{0}'s {1} is active for **{2}** frames.".format(
-                                char,
-                                move_name,
-                                str(frames)))
-
-        # Responses for damage and stun
-        elif s in ('damage', 'stun'):
-            deeps = move[s]
-
-            await bot.say("{0}'s {1} does **{2}** {3}.".format(
-                                char,
-                                move_name,
-                                str(deeps),
-                                s))
-
-        # For nothing, or anything else, respond with summary of frame data
-        else:
-            # Dictionary of key names and nice names for printed results
-            dataNames = {'startup': ('Startup', 0),
-                         'active': ('Active', 1),
-                         'recovery': ('Recovery', 2),
-                         'onBlock': ('On Block', 3),
-                         'onHit': ('On Hit', 4),
-                         'damage': ('Damage', 5),
-                         'stun': ('Stun', 6)
-                        }
-
-            output = "{0}'s {1} frame data:\n".format(char, move_name)
-
-            # Add to output based on existing frame data
-            for x in sorted(dataNames, key=lambda x : dataNames[x][1]):
-                output += "{0}: **{1}**, ".format(dataNames[x][0], str(move[x]))
-
-            # Remove last character (extra comma)
-            output = output[:-2]
-
-            await bot.say(output)
-
-    except KeyError:
-        log.warning(log_msg(['frame_data_not_found', 'character',  c]))
-
-        await bot.say("Character Not Found")
-
-        log.info(log_msg(['sent_message',
-                          'invalid_character_request',
-                          ctx.message.channel.name]))
-
-    except IndexError:
-        log.warning(log_msg(['frame_data_not_found', 'move',  m]))
-
-        await bot.say("Move Not Found")
-
-        log.info(log_msg(['sent_message',
-                          'invalid_move_request',
-                          ctx.message.channel.name]))
-
-    except UnboundLocalError:
-        log.warning(log_msg(['frame_data_not_found', 'situation',  s]))
-
-        await bot.say("Situation Not Found")
-
-        log.info(log_msg(['sent_message',
-                         'invalid_situation_request',
-                          ctx.message.channel.name]))
 
 @bot.command()
 async def test(ctx):
