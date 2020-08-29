@@ -94,7 +94,7 @@ async def me(ctx, *text : str):
 async def quote(ctx, *, request:str):
     """
     Quotes an existing message from the same channel.
-    request = discord message id (from Copy ID)
+    request = (MessageID|MessageURL)
     (Make sure you have Discord's developer mode turned on to get Message IDs)
     """
 
