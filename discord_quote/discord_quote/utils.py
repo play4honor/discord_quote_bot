@@ -42,6 +42,6 @@ def parse_msg_url(url):
         r"https:\/\/discord[a-z]*\.com\/channels\/([0-9]*)\/([0-9]*)\/([0-9]*)"
     )
 
-    server, channel, message = re.search(url, url_template).groups()
+    server, channel, message = re.search(url_template, url).groups()
 
     return server, channel, message
