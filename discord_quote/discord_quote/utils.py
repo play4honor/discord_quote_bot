@@ -35,9 +35,6 @@ def parse_msg_url(url):
     Parses out the message id from a discord mesasge url
     """
     
-    if not url.startswith('https://discordapp.com/channels/'):
-        raise ValueError("Provided URL is not a Discord Message URL")
-
     url_template = re.compile(
         r"https:\/\/discord[a-z]*\.com\/channels\/([0-9]*)\/([0-9]*)\/([0-9]*)"
     )
