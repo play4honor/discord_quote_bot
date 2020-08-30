@@ -111,9 +111,9 @@ async def quote(ctx, *, request:str):
     # Clean up request regardless of success
     try:
         await ctx.message.delete()
-        log.info(log_msg(['deleted_request', msg_id]))
+        log.info(log_msg(['deleted_request', msg_target]))
     except Exception as e:
-        log.warning(log_msg(['delete_request_failed', msg_id, e]))
+        log.warning(log_msg(['delete_request_failed', msg_target, e]))
 
     if '\r' in msg_target or '\n' in msg_target:
       # If weird users decide to separate the msg_id from the reply using a line return
