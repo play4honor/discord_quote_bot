@@ -36,7 +36,7 @@ description = '''
 
 # Switch for quote notifications; if true, bot will post a notice in the
 # originating channel when quoting across channels.
-quote_notifications = True
+quote_notifications = False
 
 bot = commands.Bot(command_prefix='!', description=description)
 
