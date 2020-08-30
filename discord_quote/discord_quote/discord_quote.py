@@ -108,6 +108,13 @@ async def quote(ctx, *, request:str):
     msg_target = request.split(' ')[0]
     reply = request.split(' ')[1:]
 
+    # Clean up request regardless of success
+    try:
+        await ctx.message.delete()
+        log.info(log_msg(['deleted_request', msg_id]))
+    except Exception as e:
+        log.warning(log_msg(['delete_request_failed', msg_id, e]))
+
     if '\r' in msg_target or '\n' in msg_target:
       # If weird users decide to separate the msg_id from the reply using a line return
       # clean it up.
@@ -130,10 +137,12 @@ async def quote(ctx, *, request:str):
                         msg_id,
                         reply]))
     else:
-        if not msg_target.startswith('https://discordapp.com/channels/'):
-            raise ValueError("Provided URL is not a Discord Message URL")
+        try:
+            _, _, msg_id = parse_msg_url(msg_target)
+        except ValueError as e:
+            log.info(log_msg(['parsed_url_request_failed', 'msg_target']))
+            return
 
-        _, _, msg_id = parse_msg_url(msg_target)
 
         log.info(log_msg(['parsed_url_request',
                         'quote',
@@ -142,14 +151,6 @@ async def quote(ctx, *, request:str):
                         msg_id,
                         reply]))
 
-
-    # Clean up request regardless of success
-    try:
-        await ctx.message.delete()
-        log.info(log_msg(['deleted_request', msg_id]))
-    except Exception as e:
-        log.warning(log_msg(['delete_request_failed', msg_id, e]))
-    
     try:
         # Retrieve the message
         msg_ = await ctx.channel.fetch_message(msg_id)
