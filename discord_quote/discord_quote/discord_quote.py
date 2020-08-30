@@ -256,9 +256,16 @@ async def _format_message(ctx, msg_, action):
     original_message_time = arrow.get(msg_.created_at)
     relative_time = original_message_time.humanize(current_time)
 
+    # Construct the channel jump_url
+    channel_url = (
+            f"https://discord.com/channels/"
+        f"{msg_.guild.id}/{msg_.channel.id}"
+    )
+
     output = (
         f"**{msg_.author.name} {action} " +
-        f"[{relative_time}](<{msg_.jump_url}>):**\n"+
+        f"[{relative_time}](<{msg_.jump_url}>) " +
+        f"in [#{msg_.channel.name}](<{channel_url}>):**\n"+
         block_format(msg_.clean_content) + "\n"
     )
 
@@ -582,8 +589,12 @@ async def test(ctx):
     me_cmd = ctx.bot.get_command('me')
     await ctx.invoke(me_cmd, 'is testing the quote-bot.')
 
-    await ctx.channel.send('|---END TESTING QUOTE FUNCTIONS---|')
+    # TEST 11
+    # This test may not work if the bot is not in P4H
+    await ctx.invoke(quote_cmd
+            , request=f'https://discord.com/channels/106536439809859584/202198069691940865/738132703253233735')
 
+    await ctx.channel.send('|---END TESTING QUOTE FUNCTIONS---|')
 
 if __name__=='__main__':
     if os.environ['DISCORD_QUOTEBOT_TOKEN']:
