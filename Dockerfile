@@ -1,4 +1,4 @@
-FROM python:3.6-slim
+FROM python:3.8-slim-buster
 
 COPY ./requirements.txt ./
 
@@ -8,10 +8,10 @@ RUN apt-get -y update && \
     apt-get -y autoremove
 
 # Copy the latest version of the bot 
-COPY ./discord_quote ./discord_quote
+COPY ./discord_quote /discord_quote
 
 # Change to working directory
-WORKDIR ./discord_quote/discord_quote/
+WORKDIR /discord_quote/discord_quote/
 
 # Run the shell file
 CMD ["python", "discord_quote.py"]
