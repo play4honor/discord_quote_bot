@@ -140,7 +140,7 @@ async def quote(ctx, *, request:str):
         try:
             _, _, msg_id = parse_msg_url(msg_target)
         except ValueError as e:
-            log.info(log_msg(['parsed_url_request_failed', 'msg_target']))
+            log.info(log_msg(['parsed_url_request_failed', msg_target]))
             return
 
 
