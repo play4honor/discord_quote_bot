@@ -130,6 +130,7 @@ async def quote(ctx, *, request:str):
     # if not assume it's the message url
     if msg_target.isnumeric():
         msg_id = msg_target
+        channel_id = ctx.channel.id # if numeric, then channel is same as context
 
         log.info(log_msg(['parsed_id_request',
                         'quote',
@@ -138,7 +139,7 @@ async def quote(ctx, *, request:str):
                         reply]))
     else:
         try:
-            _, _, msg_id = parse_msg_url(msg_target)
+            _, channel_id, msg_id = parse_msg_url(msg_target)
         except ValueError as e:
             log.info(log_msg(['parsed_url_request_failed', msg_target]))
             return
@@ -153,10 +154,10 @@ async def quote(ctx, *, request:str):
 
     try:
         # Retrieve the message
-        msg_ = await ctx.channel.fetch_message(msg_id)
+        msg_ = await ctx.get_channel(channel_id).fetch_message(msg_id)
         log.info(log_msg(['retrieved_quote',
                       msg_id,
-                      ctx.message.channel.name,
+                      ctx.get_channel(channel_id).name,
                       msg_.author.name,
                       msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                       ctx.message.author.name,
@@ -188,7 +189,7 @@ async def quote(ctx, *, request:str):
 
         # Return error if message not found.
         await ctx.channel.send(
-            f"Couldn't quote ({msg_id}) in this channel. " +
+            f"Couldn't quote ({msg_id}) from channel {channel_id}. " +
             f"Requested by {ctx.message.author.name}."
         )
 
