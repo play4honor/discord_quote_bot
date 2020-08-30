@@ -558,10 +558,25 @@ async def test(ctx):
             )
     )
 
+    # TEST 6: Quote without a reply, via URL quoting
+    await ctx.invoke(quote_cmd, request=f'{msg_.jump_url}')
+
+    # TEST 7: Quote with a reply, via URL quoting
+    await ctx.invoke(quote_cmd
+            , request=f'{msg_.jump_url} Testing quote + reply functionality (via URL quoting).')
+
+    # TEST 8: Quote a quote without a reply, via URL quoting
+    msg_ = await get_last_message()
+    await ctx.invoke(quote_cmd, request=f'{msg_.jump_url}')
+
+    # TEST 9: Quote a quote with a reply, via URL quoting
+    msg_ = await get_last_message()
+    await ctx.invoke(quote_cmd
+            , request=f'{msg_.jump_url} Testing quoting a quote, with a reply (via URL quoting).')
     # Misquote
     # This seems annoying to test.
 
-    # TEST 6: Me Function
+    # TEST 10: Me Function
     msg_ = await get_last_real_message()
     me_cmd = ctx.bot.get_command('me')
     await ctx.invoke(me_cmd, 'is testing the quote-bot.')
