@@ -163,27 +163,64 @@ async def quote(ctx, *, request:str):
                       ctx.message.author.name,
                       msg_.clean_content]))
 
-        # Get, or create a webhook
-        hook = await _get_hook(ctx)
+        # Get, or create a webhook for the context channel
+        hook = await _get_hook(ctx, ctx.channel.id)
 
         # Use WebHooks if possible
         if hook:
             payload = await webhook_quote(ctx, msg_, *reply)
 
-            # We need custom handling, so create a Webhook Adapter from our hook
-            await hook._adapter.execute_webhook(
-                payload={
-                    "content":payload,
-                    "username" : ctx.guild.me.name,
-                    "avatar_url": str(ctx.guild.me.avatar_url)
-                }
+            # We retain the output (so we can reference it, if necessary)
+            out = await hook.send(
+                content=payload,
+                username=ctx.guild.me.name,
+                avatar_url=str(ctx.guild.me.avatar_url),
+                wait=True
             )
 
             log.info(log_msg(['sent_webhook_message',
                               'quote',
                               ctx.message.channel.name]))
+
+            # If cross-channel quoting, inform the originating channel.
+            if ctx.channel.id != channel_id:
+                # Get or create a webhook for the originating channel
+                hook = await _get_hook(ctx, msg_.channel.id)
+
+                channel_url = (
+                    f"https://discord.com/channels/"
+                    f"{msg_.guild.id}/{ctx.channel.id}"
+                )
+
+                await hook.send(
+                    content=(
+                        f"*{msg_.author.name} was just "
+                        f"[quoted](<{out.jump_url}>) in " +
+                        f"[#{ctx.channel.name}](<{channel_url}>).*"
+                    ),
+                    username=ctx.guild.me.name,
+                    avatar_url=str(ctx.guild.me.avatar_url)
+                )
+
+                log.info(log_msg(['sent_webhook_message',
+                                  'quote_notification_webhook',
+                                  ctx.guild.get_channel(channel_id).name]))
+
         else:
             await bot_quote(ctx, msg_, *reply)
+
+            # If cross-channel quoting, inform the originating channel.
+            if ctx.channel.id != channel_id:
+
+                await ctx.guild.get_channel(msg_.channel.id).send(
+                    f"{msg_.author.name} was just quoted in " +
+                    f"**#{ctx.channel.name}**."
+                )
+
+                log.info(log_msg(['sent_message',
+                         'quote_notification',
+                         ctx.guild.get_channel(channel_id).name]))
+
     except discord.errors.HTTPException as e:
         log.warning(['msg_not_found', msg_id, ctx.message.author.mention, e])
 
@@ -198,14 +235,21 @@ async def quote(ctx, *, request:str):
                           ctx.message.channel.name]))
 
 # Helper function for quote: gets a WebHook
-async def _get_hook(ctx):
+async def _get_hook(ctx, channel_id=None):
+    # If no specific channel_id is specified, then we want the channel of
+    # the ctx
+    if not channel_id:
+        channel = ctx.channel
+    else:
+        channel = ctx.guild.get_channel(channel_id)
+
     # Check for 'Manage WebHook' permission and return if missing permission
-    if not ctx.channel.permissions_for(ctx.guild.me).manage_webhooks:
+    if not channel.permissions_for(ctx.guild.me).manage_webhooks:
         return
 
     # Figure out the appropriate webhook
     hook = None
-    webhooks = await ctx.channel.webhooks()
+    webhooks = await channel.webhooks()
     if webhooks:
         # If there's an existing webhook, just use that.
         hook = webhooks[0]
@@ -214,7 +258,7 @@ async def _get_hook(ctx):
         log.info(log_msg(['webhook_not_found']))
 
         # Otherwise, create a webhook.
-        hook = await ctx.channel.create_webhook(name=bot.user.name)
+        hook = await channel.create_webhook(name=bot.user.name)
         log.info(log_msg(['webhook_created', hook.name]))
 
     return(hook)
