@@ -130,9 +130,6 @@ async def quote(ctx, *, request:str):
                         msg_id,
                         reply]))
     else:
-        if not msg_target.startswith('https://discordapp.com/channels/'):
-            raise ValueError("Provided URL is not a Discord Message URL")
-
         _, _, msg_id = parse_msg_url(msg_target)
 
         log.info(log_msg(['parsed_url_request',
