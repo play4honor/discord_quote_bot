@@ -130,7 +130,12 @@ async def quote(ctx, *, request:str):
                         msg_id,
                         reply]))
     else:
-        _, _, msg_id = parse_msg_url(msg_target)
+        try:
+            _, _, msg_id = parse_msg_url(msg_target)
+        except ValueError as e:
+            log.info(log_msg(['parsed_url_request_failed', 'msg_target']))
+            return
+
 
         log.info(log_msg(['parsed_url_request',
                         'quote',
