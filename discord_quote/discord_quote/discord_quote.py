@@ -154,10 +154,10 @@ async def quote(ctx, *, request:str):
 
     try:
         # Retrieve the message
-        msg_ = await ctx.get_channel(channel_id).fetch_message(msg_id)
+        msg_ = await ctx.guild.get_channel(channel_id).fetch_message(msg_id)
         log.info(log_msg(['retrieved_quote',
                       msg_id,
-                      ctx.get_channel(channel_id).name,
+                      ctx.guild.get_channel(channel_id).name,
                       msg_.author.name,
                       msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                       ctx.message.author.name,
