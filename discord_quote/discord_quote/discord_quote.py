@@ -34,6 +34,10 @@ description = '''
             A Bot to provide Basic Quoting functionality for Discord
             '''
 
+# Switch for quote notifications; if true, bot will post a notice in the
+# originating channel when quoting across channels.
+quote_notifications = True
+
 bot = commands.Bot(command_prefix='!', description=description)
 
 @bot.event
@@ -183,7 +187,7 @@ async def quote(ctx, *, request:str):
                               ctx.message.channel.name]))
 
             # If cross-channel quoting, inform the originating channel.
-            if ctx.channel.id != channel_id:
+            if ctx.channel.id != channel_id and quote_notifications:
                 # Get or create a webhook for the originating channel
                 hook = await _get_hook(ctx, msg_.channel.id)
 
@@ -210,7 +214,7 @@ async def quote(ctx, *, request:str):
             await bot_quote(ctx, msg_, *reply)
 
             # If cross-channel quoting, inform the originating channel.
-            if ctx.channel.id != channel_id:
+            if ctx.channel.id != channel_id and quote_notifications:
 
                 await ctx.guild.get_channel(msg_.channel.id).send(
                     f"{msg_.author.name} was just quoted in " +
