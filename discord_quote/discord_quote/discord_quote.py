@@ -34,6 +34,10 @@ description = '''
             A Bot to provide Basic Quoting functionality for Discord
             '''
 
+# Switch for quote notifications; if true, bot will post a notice in the
+# originating channel when quoting across channels.
+quote_notifications = False
+
 bot = commands.Bot(command_prefix='!', description=description)
 
 @bot.event
@@ -130,6 +134,7 @@ async def quote(ctx, *, request:str):
     # if not assume it's the message url
     if msg_target.isnumeric():
         msg_id = msg_target
+        channel_id = ctx.channel.id # if numeric, then channel is same as context
 
         log.info(log_msg(['parsed_id_request',
                         'quote',
@@ -138,7 +143,7 @@ async def quote(ctx, *, request:str):
                         reply]))
     else:
         try:
-            _, _, msg_id = parse_msg_url(msg_target)
+            _, channel_id, msg_id = parse_msg_url(msg_target)
         except ValueError as e:
             log.info(log_msg(['parsed_url_request_failed', msg_target]))
             return
@@ -153,42 +158,79 @@ async def quote(ctx, *, request:str):
 
     try:
         # Retrieve the message
-        msg_ = await ctx.channel.fetch_message(msg_id)
+        msg_ = await ctx.guild.get_channel(channel_id).fetch_message(msg_id)
         log.info(log_msg(['retrieved_quote',
                       msg_id,
-                      ctx.message.channel.name,
+                      ctx.guild.get_channel(channel_id).name,
                       msg_.author.name,
                       msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                       ctx.message.author.name,
                       msg_.clean_content]))
 
-        # Get, or create a webhook
-        hook = await _get_hook(ctx)
+        # Get, or create a webhook for the context channel
+        hook = await _get_hook(ctx, ctx.channel.id)
 
         # Use WebHooks if possible
         if hook:
             payload = await webhook_quote(ctx, msg_, *reply)
 
-            # We need custom handling, so create a Webhook Adapter from our hook
-            await hook._adapter.execute_webhook(
-                payload={
-                    "content":payload,
-                    "username" : ctx.guild.me.name,
-                    "avatar_url": str(ctx.guild.me.avatar_url)
-                }
+            # We retain the output (so we can reference it, if necessary)
+            out = await hook.send(
+                content=payload,
+                username=ctx.guild.me.name,
+                avatar_url=str(ctx.guild.me.avatar_url),
+                wait=True
             )
 
             log.info(log_msg(['sent_webhook_message',
                               'quote',
                               ctx.message.channel.name]))
+
+            # If cross-channel quoting, inform the originating channel.
+            if ctx.channel.id != channel_id and quote_notifications:
+                # Get or create a webhook for the originating channel
+                hook = await _get_hook(ctx, msg_.channel.id)
+
+                channel_url = (
+                    f"https://discord.com/channels/"
+                    f"{msg_.guild.id}/{ctx.channel.id}"
+                )
+
+                await hook.send(
+                    content=(
+                        f"*{msg_.author.name} was just "
+                        f"[quoted](<{out.jump_url}>) in " +
+                        f"[#{ctx.channel.name}](<{channel_url}>).*"
+                    ),
+                    username=ctx.guild.me.name,
+                    avatar_url=str(ctx.guild.me.avatar_url)
+                )
+
+                log.info(log_msg(['sent_webhook_message',
+                                  'quote_notification_webhook',
+                                  ctx.guild.get_channel(channel_id).name]))
+
         else:
             await bot_quote(ctx, msg_, *reply)
+
+            # If cross-channel quoting, inform the originating channel.
+            if ctx.channel.id != channel_id and quote_notifications:
+
+                await ctx.guild.get_channel(msg_.channel.id).send(
+                    f"{msg_.author.name} was just quoted in " +
+                    f"**#{ctx.channel.name}**."
+                )
+
+                log.info(log_msg(['sent_message',
+                         'quote_notification',
+                         ctx.guild.get_channel(channel_id).name]))
+
     except discord.errors.HTTPException as e:
         log.warning(['msg_not_found', msg_id, ctx.message.author.mention, e])
 
         # Return error if message not found.
         await ctx.channel.send(
-            f"Couldn't quote ({msg_id}) in this channel. " +
+            f"Couldn't quote ({msg_id}) from channel {channel_id}. " +
             f"Requested by {ctx.message.author.name}."
         )
 
@@ -197,14 +239,21 @@ async def quote(ctx, *, request:str):
                           ctx.message.channel.name]))
 
 # Helper function for quote: gets a WebHook
-async def _get_hook(ctx):
+async def _get_hook(ctx, channel_id=None):
+    # If no specific channel_id is specified, then we want the channel of
+    # the ctx
+    if not channel_id:
+        channel = ctx.channel
+    else:
+        channel = ctx.guild.get_channel(channel_id)
+
     # Check for 'Manage WebHook' permission and return if missing permission
-    if not ctx.channel.permissions_for(ctx.guild.me).manage_webhooks:
+    if not channel.permissions_for(ctx.guild.me).manage_webhooks:
         return
 
     # Figure out the appropriate webhook
     hook = None
-    webhooks = await ctx.channel.webhooks()
+    webhooks = await channel.webhooks()
     if webhooks:
         # If there's an existing webhook, just use that.
         hook = webhooks[0]
@@ -213,7 +262,7 @@ async def _get_hook(ctx):
         log.info(log_msg(['webhook_not_found']))
 
         # Otherwise, create a webhook.
-        hook = await ctx.channel.create_webhook(name=bot.user.name)
+        hook = await channel.create_webhook(name=bot.user.name)
         log.info(log_msg(['webhook_created', hook.name]))
 
     return(hook)
@@ -255,9 +304,16 @@ async def _format_message(ctx, msg_, action):
     original_message_time = arrow.get(msg_.created_at)
     relative_time = original_message_time.humanize(current_time)
 
+    # Construct the channel jump_url
+    channel_url = (
+            f"https://discord.com/channels/"
+        f"{msg_.guild.id}/{msg_.channel.id}"
+    )
+
     output = (
         f"**{msg_.author.name} {action} " +
-        f"[{relative_time}](<{msg_.jump_url}>):**\n"+
+        f"[{relative_time}](<{msg_.jump_url}>) " +
+        f"in [#{msg_.channel.name}](<{channel_url}>):**\n"+
         block_format(msg_.clean_content) + "\n"
     )
 
@@ -581,8 +637,12 @@ async def test(ctx):
     me_cmd = ctx.bot.get_command('me')
     await ctx.invoke(me_cmd, 'is testing the quote-bot.')
 
-    await ctx.channel.send('|---END TESTING QUOTE FUNCTIONS---|')
+    # TEST 11
+    # This test may not work if the bot is not in P4H
+    await ctx.invoke(quote_cmd
+            , request=f'https://discord.com/channels/106536439809859584/202198069691940865/738132703253233735')
 
+    await ctx.channel.send('|---END TESTING QUOTE FUNCTIONS---|')
 
 if __name__=='__main__':
     if os.environ['DISCORD_QUOTEBOT_TOKEN']:
