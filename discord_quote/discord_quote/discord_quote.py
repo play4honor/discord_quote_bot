@@ -34,10 +34,6 @@ description = '''
             A Bot to provide Basic Quoting functionality for Discord
             '''
 
-# Switch for quote notifications; if true, bot will post a notice in the
-# originating channel when quoting across channels.
-quote_notifications = False
-
 bot = commands.Bot(command_prefix='!', description=description)
 
 @bot.event
@@ -186,44 +182,8 @@ async def quote(ctx, *, request:str):
                               'quote',
                               ctx.message.channel.name]))
 
-            # If cross-channel quoting, inform the originating channel.
-            if ctx.channel.id != channel_id and quote_notifications:
-                # Get or create a webhook for the originating channel
-                hook = await _get_hook(ctx, msg_.channel.id)
-
-                channel_url = (
-                    f"https://discord.com/channels/"
-                    f"{msg_.guild.id}/{ctx.channel.id}"
-                )
-
-                await hook.send(
-                    content=(
-                        f"*{msg_.author.name} was just "
-                        f"[quoted](<{out.jump_url}>) in " +
-                        f"[#{ctx.channel.name}](<{channel_url}>).*"
-                    ),
-                    username=ctx.guild.me.name,
-                    avatar_url=str(ctx.guild.me.avatar_url)
-                )
-
-                log.info(log_msg(['sent_webhook_message',
-                                  'quote_notification_webhook',
-                                  ctx.guild.get_channel(channel_id).name]))
-
         else:
             await bot_quote(ctx, msg_, *reply)
-
-            # If cross-channel quoting, inform the originating channel.
-            if ctx.channel.id != channel_id and quote_notifications:
-
-                await ctx.guild.get_channel(msg_.channel.id).send(
-                    f"{msg_.author.name} was just quoted in " +
-                    f"**#{ctx.channel.name}**."
-                )
-
-                log.info(log_msg(['sent_message',
-                         'quote_notification',
-                         ctx.guild.get_channel(channel_id).name]))
 
     except discord.errors.HTTPException as e:
         log.warning(['msg_not_found', msg_id, ctx.message.author.mention, e])
