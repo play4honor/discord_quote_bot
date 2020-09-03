@@ -44,4 +44,4 @@ def parse_msg_url(url):
 
     server, channel, message = re.search(url_template, url).groups()
 
-    return server, channel, message
+    return int(server), int(channel), int(message)
