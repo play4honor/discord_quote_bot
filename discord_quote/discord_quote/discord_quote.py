@@ -155,6 +155,7 @@ async def quote(ctx, *, request:str):
     try:
         # Retrieve the message
         msg_ = await ctx.guild.get_channel(channel_id).fetch_message(msg_id)
+
         log.info(log_msg(['retrieved_quote',
                       msg_id,
                       ctx.guild.get_channel(channel_id).name,
@@ -175,6 +176,7 @@ async def quote(ctx, *, request:str):
                 content=payload,
                 username=ctx.guild.me.name,
                 avatar_url=str(ctx.guild.me.avatar_url),
+                files=[await attachment.to_file() for attachment in msg_.attachments],
                 wait=True
             )
 
