@@ -96,7 +96,7 @@ If you want to run a personal version of the bot for testing your own changes, y
 - Navigate to your local repository and set up the development environment using `venv`
     
     ```
-    python3.6 -m venv ./venv
+    python3.7 -m venv ./venv
     . ./venv/bin/activate
     pip install -r ./requirements.txt
     ```
@@ -109,8 +109,21 @@ If you want to run a personal version of the bot for testing your own changes, y
     ```
     
 - At this point, your personal quote bot should show up in #stuff. You'll need to assign appropriate permissions for it to be used in a channel.
+
+### Optional: Use `nodemon` to develop in a fast interactive loop
+
+- To make the process of developing using the personal testing bot smoother, you can monitor `discord_quote.py` for changes and have the command `python discord_quote.py` restarted whenever there is a change to the code:
+- Install `nodemon` (requires `nodejs`)
     
+    ```
+    sudo npm install -g nodemon
+    ```
+- Instead of running `python discord_quote.py`, run
     
+    ```
+    nodemon discord_quote.py
+    ```
+
 # Additional Notes:
 
 - Frame data source from https://github.com/D4RKONION/fatsfvframedatajson
