@@ -175,6 +175,7 @@ async def quote(ctx, *, request:str):
                 content=payload,
                 username=ctx.guild.me.name,
                 avatar_url=str(ctx.guild.me.avatar_url),
+                files=[await attachment.to_file() for attachment in msg_.attachments],
                 wait=True
             )
 
