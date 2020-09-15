@@ -517,6 +517,162 @@ async def misquote(ctx , *target : discord.User):
                           'invalid_misquote_request',
                           ctx.message.channel.name]))
 
+# --- Pin commands ---
+@bot.group()
+async def pin(ctx):
+    if ctx.invoked_subcommand is None:
+        await ctx.send('Invalid pin command passed...')
+
+@pin.command()
+async def put(ctx, *, request:str):
+    """
+    Stores an existing message from the same channel as a pin with an alias.
+    request = (MessageID|MessageURL) (alias)
+
+    Aliases must be < 25 characters and unique to the server.
+    Aliases are case-insensitive.
+
+    (Make sure you have Discord's developer mode turned on to get Message IDs)
+    """
+    log.info(log_msg(['received_request',
+                      'quote',
+                      ctx.message.channel.name,
+                      ctx.message.author.name,
+                      ctx.message.author.id]))
+
+    # Parse out message target and reply (if it exists)
+    msg_target = request.split(' ')[0]
+    alias = ' '.join(request.split(' ')[1:])
+
+    # Clean up request regardless of success
+    try:
+        await ctx.message.delete()
+        log.info(log_msg(['deleted_request', msg_target]))
+    except Exception as e:
+        log.warning(log_msg(['delete_request_failed', msg_target, e]))
+
+    if '\r' in msg_target or '\n' in msg_target:
+      # If weird users decide to separate the msg_id from the reply using a line return
+      # clean it up.
+      if '\r' in msg_target:
+        _temp = msg_target.split('\r')
+      else:
+        _temp = msg_target.split('\n')
+
+      msg_target = _temp[0].strip()
+      alias = ' '.join([_temp[1].strip()] + request.split(' ')[1:]).lower()
+
+    log.info(log_msg(['received_request',
+                      'pin',
+                      ctx.message.channel.name,
+                      ctx.message.author.name,
+                      ctx.message.author.id]))
+
+    if len(alias) == 0:
+        log.info(log_msg(['sent_message',
+                          'invalid_pin_request',
+                          ctx.message.channel.name,
+                          'No alias specified']))
+        await ctx.send('You must specify an alias when pinning.')
+    
+    if len(alias) > 25:
+        log.info(log_msg(['sent_message',
+                          'invalid_pin_request',
+                          ctx.message.channel.name,
+                          'Alias too long.']))
+        await ctx.send('Your alias must be <=25 characters.')
+
+    ### ALSO NEED TO ADD A CONDITIONAL FOR AN ALREADY USED ALIAS
+
+    # If the Message target is numeric, assume it's the ID
+    # if not assume it's the message url
+    if msg_target.isnumeric():
+        msg_id = msg_target
+        channel_id = ctx.channel.id # if numeric, then channel is same as context
+
+        log.info(log_msg(['parsed_id_request',
+                        'pin',
+                        ctx.message.channel.name,
+                        msg_id]))
+    else:
+        try:
+            _, channel_id, msg_id = parse_msg_url(msg_target)
+        except ValueError as e:
+            log.info(log_msg(['parsed_url_request_failed', msg_target]))
+            return
+
+
+        log.info(log_msg(['parsed_url_request',
+                        'pin',
+                        ctx.message.channel.name,
+                        msg_target,
+                        msg_id]))
+
+    try:
+        # Retrieve the message
+        msg_ = await ctx.guild.get_channel(channel_id).fetch_message(msg_id)
+        log.info(log_msg(['retrieved_quote',
+                      msg_id,
+                      ctx.guild.get_channel(channel_id).name,
+                      msg_.author.name,
+                      msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                      ctx.message.author.name,
+                      msg_.clean_content]))
+
+        # Store the message
+        row = [alias, msg_.jump_url, ctx.message.author.name, ctx.message.created_at]
+        await ctx.send(f'PUT command: {row}')
+        
+        # Get, or create a webhook for the context channel
+        hook = await _get_hook(ctx, ctx.channel.id)
+
+        # Use WebHooks if possible
+        if hook:
+            payload = (
+                f"**{ctx.message.author.name}** just pinned " +
+                f"**{msg_.author.name}'s** [message](<{msg_.jump_url}>) to "+
+                f"*{alias}*"
+            )
+
+            out = await hook.send(
+                content=payload,
+                username=ctx.guild.me.name,
+                avatar_url=str(ctx.guild.me.avatar_url),
+                wait=True
+            )
+
+            log.info(log_msg(['sent_webhook_message',
+                              'pin successful',
+                              ctx.message.channel.name]))
+
+        else:
+            payload = (
+                f"**{ctx.message.author.name}** just pinned " +
+                f"**{msg_.author.name}'s** message to "+
+                f"*{alias}*"
+            )
+            await ctx.channel.send(payload)
+            log.info(log_msg(['sent_message',
+                              'pin successful',
+                              ctx.message.channel.name]))
+
+    except discord.errors.HTTPException as e:
+        log.warning(['msg_not_found', msg_id, ctx.message.author.mention, e])
+
+        # Return error if message not found.
+        await ctx.channel.send(
+            f"Couldn't find ({msg_id}) from channel {channel_id}. " +
+            f"Requested by {ctx.message.author.name}."
+        )
+
+        log.info(log_msg(['sent_message',
+                          'invalid_pin_request',
+                          ctx.message.channel.name]))
+
+
+@pin.command()
+async def get(ctx, *, request:str):
+    await ctx.send(f'Get command: {request}')
 
 @bot.command()
 async def test(ctx):
