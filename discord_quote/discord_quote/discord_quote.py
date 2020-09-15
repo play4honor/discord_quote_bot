@@ -546,12 +546,7 @@ async def misquote(ctx , *target : discord.User):
                           ctx.message.channel.name]))
 
 # --- Pin commands ---
-@bot.group()
-async def pin(ctx):
-    if ctx.invoked_subcommand is None:
-        await ctx.send('Invalid pin command passed...')
-
-@pin.command()
+@bot.command(aliases=['p'])
 async def put(ctx, *, request:str):
     """
     Stores an existing message from the same channel as a pin with an alias.
@@ -718,8 +713,7 @@ async def put(ctx, *, request:str):
                           'invalid_pin_request',
                           ctx.message.channel.name]))
 
-
-@pin.command()
+@bot.command(aliases=['g'])
 async def get(ctx, *, request:str):
     pin = db_execute(
             f"SELECT msg_url FROM pins WHERE alias=\"{request.lower()}\""
