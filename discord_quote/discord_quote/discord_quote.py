@@ -721,7 +721,26 @@ async def put(ctx, *, request:str):
 
 @pin.command()
 async def get(ctx, *, request:str):
-    await ctx.send(f'Get command: {request}')
+    pin = db_execute(
+            f"SELECT msg_url FROM pins WHERE alias=\"{request.lower()}\""
+    )
+    if len(pin) > 0:
+        # Get the message url
+        msg_url = pin[0][0]
+
+        log.info(log_msg(['retrieved_pin',
+                          'pin',
+                          pin[0]]))
+
+        # Quote it
+        quote_cmd = ctx.bot.get_command('quote')
+        await ctx.invoke(quote_cmd, request=msg_url)
+    else:
+        log.info(log_msg(['sent_message',
+                          'pin_not_found',
+                          ctx.message.channel.name]))
+        await ctx.channel.send(f'*{request}* not found in pins')
+        return
 
 @bot.command()
 async def test(ctx):
