@@ -9,6 +9,8 @@ import sys
 import os
 import arrow
 import random
+from pathlib import Path
+import sqlite3
 
 import author_model as author
 from utils import log_msg, block_format, parse_msg_url
@@ -35,6 +37,32 @@ description = '''
             '''
 
 bot = commands.Bot(command_prefix='!', description=description)
+
+def load_database():
+    # Check if the database exists
+    if not Path('./discord_quote_bot_data.db').exists():
+        pass
+        ### Add in backup download
+
+    conn = sqlite3.connect('./discord_quote_bot_data.db')
+    c = conn.cursor()
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS pins (
+        alias TEXT, msg_url TEXT, pin_user TEXT, pin_time TEXT
+        )
+        """
+    )
+
+    return(conn)
+
+def db_execute(query):
+    # We define this helper function to make sure that the db is closed
+    # after every query. If not, easy way to corrupt the db.
+    with load_database() as conn:
+        c = conn.cursor()
+        c.execute(query)
+        return(c.fetchall())
 
 @bot.event
 async def on_ready():
@@ -574,6 +602,7 @@ async def put(ctx, *, request:str):
                           ctx.message.channel.name,
                           'No alias specified']))
         await ctx.send('You must specify an alias when pinning.')
+        return
     
     if len(alias) > 25:
         log.info(log_msg(['sent_message',
@@ -581,6 +610,19 @@ async def put(ctx, *, request:str):
                           ctx.message.channel.name,
                           'Alias too long.']))
         await ctx.send('Your alias must be <=25 characters.')
+        return
+
+    # Check if alias already exists
+    ### MAYBE WE SHOULD JUST SET A PRIMARY KEY IN THE SCHEMA AND HANDLE THE
+    ### SQLITE ERROR
+    aliases = db_execute(f"SELECT alias FROM pins WHERE alias = \"{alias}\";")
+    if len(aliases) > 0:
+        log.info(log_msg(['sent_message',
+                          'invalid_pin_request',
+                          ctx.message.channel.name,
+                          'Alias too long.']))
+        await ctx.send(f'*{alias}* has already been used as a pin alias')
+        return
 
     ### ALSO NEED TO ADD A CONDITIONAL FOR AN ALREADY USED ALIAS
 
@@ -621,7 +663,14 @@ async def put(ctx, *, request:str):
 
         # Store the message
         row = [alias, msg_.jump_url, ctx.message.author.name, ctx.message.created_at]
-        await ctx.send(f'PUT command: {row}')
+        db_execute(
+                f"""INSERT INTO pins VALUES (
+                "{alias}",
+                "{msg_.jump_url}",
+                "{ctx.message.author.name}",
+                "{ctx.message.created_at}"
+            )
+            """)
         
         # Get, or create a webhook for the context channel
         hook = await _get_hook(ctx, ctx.channel.id)
