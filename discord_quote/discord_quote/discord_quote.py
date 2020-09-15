@@ -38,7 +38,19 @@ description = '''
 
 bot = commands.Bot(command_prefix='!', description=description)
 
-def load_database():
+# --- Database functions
+def db_load():
+    """Checks if a local copy of the Sqlite3 database exist. If not,
+    attempts to download a backup from S3. If there is no backup,
+    then it initializes a new Sqlite3 database.
+
+    Tries to create (if it doesn't already exist) the `pins` table.
+
+    Returns the connection to the databse.
+
+    Unless absolutely necessary, don't call this directly.
+    Use `db_execute()` instead.
+    """
     # Check if the database exists
     if not Path('./discord_quote_bot_data.db').exists():
         pass
@@ -57,13 +69,31 @@ def load_database():
     return(conn)
 
 def db_execute(query):
+    """Wrapper to ensure that any queries that are launched at the
+    database are launched inside a database context (i.e., the connection
+    is closed after the query is run).
+
+    Returns all the results of the query.
+    """
     # We define this helper function to make sure that the db is closed
     # after every query. If not, easy way to corrupt the db.
-    with load_database() as conn:
+    with db_load() as conn:
         c = conn.cursor()
         c.execute(query)
         return(c.fetchall())
 
+def db_backup():
+    """SKELETON
+    When called, backs up the sqlite database to a pre-specified S3 bucket.
+
+    We'll probably fetch these from the environment:
+        - os.environ['discord_quote_bot_S3_bucket']
+        - os.environ['discord_quote_bot_S3_credential']
+    """
+
+    pass
+
+# --- Bot Functions
 @bot.event
 async def on_ready():
     log.info(log_msg(['login', bot.user.name, bot.user.id]))
@@ -667,6 +697,9 @@ async def put(ctx, *, request:str):
             )
             """)
         
+        # Backup the database to S3
+        db_backup()
+
         # Get, or create a webhook for the context channel
         hook = await _get_hook(ctx, ctx.channel.id)
 
@@ -724,7 +757,7 @@ async def get(ctx, *, request:str):
 
         log.info(log_msg(['retrieved_pin',
                           'pin',
-                          pin[0]]))
+                          request.lower()]))
 
         # Quote it
         quote_cmd = ctx.bot.get_command('quote')
