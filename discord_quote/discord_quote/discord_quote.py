@@ -769,6 +769,24 @@ async def get(ctx, *, request:str):
         await ctx.channel.send(f'*{request}* not found in pins')
         return
 
+@bot.command(aliases=['l'])
+async def list(ctx, *, request:str=''):
+    _temp = db_execute(
+            f"SELECT alias FROM pins"
+    )
+
+    all_aliases = [x[0] for x in _temp]
+
+    ### SKELETON: Add matching logic here
+    matching_aliases = all_aliases
+
+    await ctx.message.author.send(
+            "All matching aliases:\n\n\t" +
+            '\n    '.join(all_aliases)
+        )
+
+    return
+
 @bot.command()
 async def test(ctx):
     # Function for debugging the current status of all the quote commands.
