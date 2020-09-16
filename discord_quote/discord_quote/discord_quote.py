@@ -11,6 +11,7 @@ import arrow
 import random
 from pathlib import Path
 import sqlite3
+import boto3
 
 import author_model as author
 from utils import log_msg, block_format, parse_msg_url
@@ -31,12 +32,20 @@ log.setLevel(logging.DEBUG)
 # with open('sfv.json', 'r') as f:
 #     moves = json.loads(f.read())
 
-# Bot Code Starts Here
-description = '''
-            A Bot to provide Basic Quoting functionality for Discord
-            '''
+# --- Initialize S3
+# Check to see if we can initialize
+try:
+    session = boto3.Session(
+        os.environ['aws_access_key_id'],
+        os.environ['aws_secret_access_key'],
+        os.environ['aws_region']
+    )
 
-bot = commands.Bot(command_prefix='!', description=description)
+    bucket = session.resource('s3').Bucket(os.environ['discord_quote_bot_bucket'])
+except KeyError as e:
+    session = None
+    bucket = None
+    logging.error(log_msg(['missing_environment_variable', e]))
 
 # --- Database functions
 def db_load():
@@ -52,9 +61,19 @@ def db_load():
     Use `db_execute()` instead.
     """
     # Check if the database exists
-    if not Path('./discord_quote_bot_data.db').exists():
-        pass
-        ### Add in backup download
+    if not Path('./discord_quote_bot_data.db').exists() and bucket:
+        # If missing, attempt to download backup file
+        logging.info(log_msg(['db_backup', 'download', 'attempt']))
+
+        bucket.download_file(
+            'discord_quote_bot_data.db',
+            'discord_quote_bot_data.db'
+        )
+
+        logging.info(log_msg(['db_backup', 'download', 'successful']))
+
+    if Path('./discord_quote_bot_data.db').exists():
+        logging.info(log_msg(['database_found']))
 
     conn = sqlite3.connect('./discord_quote_bot_data.db')
     c = conn.cursor()
@@ -83,15 +102,24 @@ def db_execute(query):
         return(c.fetchall())
 
 def db_backup():
-    """SKELETON
-    When called, backs up the sqlite database to a pre-specified S3 bucket.
-
-    We'll probably fetch these from the environment:
-        - os.environ['discord_quote_bot_S3_bucket']
-        - os.environ['discord_quote_bot_S3_credential']
+    """When called, backs up the sqlite database to a pre-specified S3 bucket.
     """
+    logging.info(log_msg(['db_backup', 'upload', 'attempt']))
 
-    pass
+    bucket.download_file(
+        './discord_quote_bot_data.db',
+        'discord_quote_bot_data.db'
+    )
+
+    logging.info(log_msg(['db_backup', 'upload', 'successful']))
+
+# Bot Code Starts Here
+description = '''
+            A Bot to provide Basic Quoting functionality for Discord
+            '''
+
+bot = commands.Bot(command_prefix='!', description=description)
+db_load()   # Initialize a new database
 
 # --- Bot Functions
 @bot.event
@@ -649,8 +677,6 @@ async def put(ctx, *, request:str):
         await ctx.send(f'*{alias}* has already been used as a pin alias')
         return
 
-    ### ALSO NEED TO ADD A CONDITIONAL FOR AN ALREADY USED ALIAS
-
     # If the Message target is numeric, assume it's the ID
     # if not assume it's the message url
     if msg_target.isnumeric():
@@ -698,7 +724,8 @@ async def put(ctx, *, request:str):
             """)
         
         # Backup the database to S3
-        db_backup()
+        if bucket:
+            db_backup()
 
         # Get, or create a webhook for the context channel
         hook = await _get_hook(ctx, ctx.channel.id)
