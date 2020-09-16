@@ -771,6 +771,21 @@ async def get(ctx, *, request:str):
 
 @bot.command(aliases=['l'])
 async def list(ctx, *, request:str=''):
+    """Lists all (or all matching) aliases in the pin database
+    and direct messages to the requester."""
+
+    log.info(log_msg(['list_request_received',
+                      'pin',
+                       request,
+                       ctx.author.name]))
+
+    # Clean up request regardless of success
+    try:
+        await ctx.message.delete()
+        log.info(log_msg(['deleted_request', f'list \"{request}\"']))
+    except Exception as e:
+        log.warning(log_msg(['delete_request_failed', f'list \"{request}\"', e]))
+
     _temp = db_execute(
             f"SELECT alias FROM pins"
     )
@@ -784,6 +799,12 @@ async def list(ctx, *, request:str=''):
             "All matching aliases:\n\n\t" +
             '\n    '.join(all_aliases)
         )
+
+    log.info(log_msg(['list_matches_sent',
+                      'pin',
+                       request,
+                       ctx.author.name,
+                       len(matching_aliases)]))
 
     return
 
