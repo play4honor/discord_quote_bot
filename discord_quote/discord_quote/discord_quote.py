@@ -36,8 +36,7 @@ log.setLevel(logging.DEBUG)
 # --- Initialize S3
 # Check to see if we can initialize
 session = boto3.Session()
-bucket = session.resource('s3').Bucket('p4h')
-#bucket = session.resource('s3').Bucket(os.environ['discord_quote_bot_bucket'])
+bucket = session.resource('s3').Bucket(os.environ['DISCORD_QUOTEBOT_BUCKET'])
 
 # Check for permissions
 try:
@@ -65,25 +64,24 @@ def db_load():
     Unless absolutely necessary, don't call this directly.
     Use `db_execute()` instead.
     """
+
+    db_filename = os.environ['DISCORD_QUOTEBOT_DB_FILENAME']
     # Check if the database exists
-    if not Path('./discord_quote_bot_data.db').exists() and bucket:
+    if not Path(f'./{db_filename}').exists() and bucket:
         # If missing, attempt to download backup file
         logging.info(log_msg(['db_backup', 'download', 'attempt']))
  
         try:
-            bucket.download_file(
-                'discord_quote_bot_data.db',
-                'discord_quote_bot_data.db'
-            )
+            bucket.download_file(db_filename, db_filename)
         except botocore.exceptions.ClientError:
             logging.error(log_msg(['db_backup', 'download', 'failed']))
 
         logging.info(log_msg(['db_backup', 'download', 'successful']))
 
-    if Path('./discord_quote_bot_data.db').exists():
+    if Path(f'./{db_filename}').exists():
         logging.info(log_msg(['database_found']))
 
-    conn = sqlite3.connect('./discord_quote_bot_data.db')
+    conn = sqlite3.connect(f'./{db_filename}')
     c = conn.cursor()
     c.execute(
         """
