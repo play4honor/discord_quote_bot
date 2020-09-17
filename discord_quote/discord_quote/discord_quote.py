@@ -632,7 +632,6 @@ async def put(ctx, *, request:str):
 
     # Parse out message target and reply (if it exists)
     msg_target = request.split(' ')[0]
-    alias = ' '.join(request.split(' ')[1:])
 
     # Clean up request regardless of success
     try:
@@ -641,6 +640,17 @@ async def put(ctx, *, request:str):
     except Exception as e:
         log.warning(log_msg(['delete_request_failed', msg_target, e]))
 
+    # Check if an alias is specified
+    if len(request.split(' ')) < 2:
+        log.info(log_msg(['sent_message',
+                          'invalid_pin_request',
+                          ctx.message.channel.name,
+                          'No alias specified']))
+        await ctx.send('You must specify an alias when pinning.')
+        return
+    alias = ' '.join(request.split(' ')[1:])
+
+    # Clean msg_target if it's weird
     if '\r' in msg_target or '\n' in msg_target:
       # If weird users decide to separate the msg_id from the reply using a line return
       # clean it up.
@@ -682,7 +692,7 @@ async def put(ctx, *, request:str):
         log.info(log_msg(['sent_message',
                           'invalid_pin_request',
                           ctx.message.channel.name,
-                          'Alias too long.']))
+                          'Alias not unique.']))
         await ctx.send(f'*{alias}* has already been used as a pin alias')
         return
 
@@ -731,7 +741,8 @@ async def put(ctx, *, request:str):
                 "{ctx.message.created_at}"
             )
             """)
-        
+        log.info(log_msg(['insert_successful'] + row))
+
         # Backup the database to S3
         if bucket:
             db_backup()
@@ -783,9 +794,9 @@ async def put(ctx, *, request:str):
                           ctx.message.channel.name]))
 
 @bot.command(aliases=['g'])
-async def get(ctx, *, request:str):
+async def get(ctx, *, alias:str):
     pin = db_execute(
-            f"SELECT msg_url FROM pins WHERE alias=\"{request.lower()}\""
+            f"SELECT msg_url FROM pins WHERE alias=\"{alias.lower()}\""
     )
     if len(pin) > 0:
         # Get the message url
@@ -793,7 +804,7 @@ async def get(ctx, *, request:str):
 
         log.info(log_msg(['retrieved_pin',
                           'pin',
-                          request.lower()]))
+                          alias.lower()]))
 
         # Quote it
         quote_cmd = ctx.bot.get_command('quote')
@@ -802,7 +813,7 @@ async def get(ctx, *, request:str):
         log.info(log_msg(['sent_message',
                           'pin_not_found',
                           ctx.message.channel.name]))
-        await ctx.channel.send(f'*{request}* not found in pins')
+        await ctx.channel.send(f'*{alias}* not found in pins')
         return
 
 @bot.command(aliases=['l'])
