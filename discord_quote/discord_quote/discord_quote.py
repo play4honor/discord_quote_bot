@@ -73,13 +73,15 @@ def db_load():
  
         try:
             bucket.download_file(db_filename, db_filename)
-        except botocore.exceptions.ClientError:
-            logging.error(log_msg(['db_backup', 'download', 'failed']))
+        except botocore.exceptions.ClientError as e:
+            logging.error(log_msg(['db_backup', 'download', 'failed', e]))
 
         logging.info(log_msg(['db_backup', 'download', 'successful']))
 
     if Path(f'./{db_filename}').exists():
         logging.info(log_msg(['database_found']))
+    else:
+        logging.info(log_msg(['creating_new_database']))
 
     conn = sqlite3.connect(f'./{db_filename}')
     c = conn.cursor()
@@ -112,9 +114,10 @@ def db_backup():
     """
     logging.info(log_msg(['db_backup', 'upload', 'attempt']))
 
-    bucket.download_file(
-        './discord_quote_bot_data.db',
-        'discord_quote_bot_data.db'
+    db_filename = os.environ['DISCORD_QUOTEBOT_DB_FILENAME']
+    bucket.upload_file(
+        f'./{db_filename}',
+        f'{db_filename}'
     )
 
     logging.info(log_msg(['db_backup', 'upload', 'successful']))
