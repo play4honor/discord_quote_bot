@@ -9,6 +9,10 @@ import sys
 import os
 import arrow
 import random
+from pathlib import Path
+import sqlite3
+import boto3
+import botocore
 
 import author_model as author
 from utils import log_msg, block_format, parse_msg_url
@@ -29,13 +33,104 @@ log.setLevel(logging.DEBUG)
 # with open('sfv.json', 'r') as f:
 #     moves = json.loads(f.read())
 
+# --- Initialize S3
+# Check to see if we can initialize
+session = boto3.Session()
+bucket = session.resource('s3').Bucket(os.environ['DISCORD_QUOTEBOT_BUCKET'])
+
+# Check for permissions
+try:
+    if bucket:
+        bucket.load()
+except botocore.exceptions.NoCredentialsError as e:
+    logging.error(log_msg(['No credentials found', e]))
+    session = None
+    bucket = None
+except botocore.exceptions.ClientError as e:
+    logging.error(log_msg(['Bad credentials: could not access bucket', e]))
+    session = None
+    bucket = None
+
+# --- Database functions
+def db_load():
+    """Checks if a local copy of the Sqlite3 database exist. If not,
+    attempts to download a backup from S3. If there is no backup,
+    then it initializes a new Sqlite3 database.
+
+    Tries to create (if it doesn't already exist) the `pins` table.
+
+    Returns the connection to the databse.
+
+    Unless absolutely necessary, don't call this directly.
+    Use `db_execute()` instead.
+    """
+
+    db_filename = os.environ['DISCORD_QUOTEBOT_DB_FILENAME']
+    # Check if the database exists
+    if not Path(f'./{db_filename}').exists() and bucket:
+        # If missing, attempt to download backup file
+        logging.info(log_msg(['db_backup', 'download', 'attempt']))
+ 
+        try:
+            bucket.download_file(db_filename, db_filename)
+        except botocore.exceptions.ClientError as e:
+            logging.error(log_msg(['db_backup', 'download', 'failed', e]))
+
+        logging.info(log_msg(['db_backup', 'download', 'successful']))
+
+    if Path(f'./{db_filename}').exists():
+        logging.info(log_msg(['database_found']))
+    else:
+        logging.info(log_msg(['creating_new_database']))
+
+    conn = sqlite3.connect(f'./{db_filename}')
+    c = conn.cursor()
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS pins (
+        alias TEXT, msg_url TEXT, pin_user TEXT, pin_time TEXT
+        )
+        """
+    )
+
+    return(conn)
+
+def db_execute(query):
+    """Wrapper to ensure that any queries that are launched at the
+    database are launched inside a database context (i.e., the connection
+    is closed after the query is run).
+
+    Returns all the results of the query.
+    """
+    # We define this helper function to make sure that the db is closed
+    # after every query. If not, easy way to corrupt the db.
+    with db_load() as conn:
+        c = conn.cursor()
+        c.execute(query)
+        return(c.fetchall())
+
+def db_backup():
+    """When called, backs up the sqlite database to a pre-specified S3 bucket.
+    """
+    logging.info(log_msg(['db_backup', 'upload', 'attempt']))
+
+    db_filename = os.environ['DISCORD_QUOTEBOT_DB_FILENAME']
+    bucket.upload_file(
+        f'./{db_filename}',
+        f'{db_filename}'
+    )
+
+    logging.info(log_msg(['db_backup', 'upload', 'successful']))
+
 # Bot Code Starts Here
 description = '''
             A Bot to provide Basic Quoting functionality for Discord
             '''
 
 bot = commands.Bot(command_prefix='!', description=description)
+db_load()   # Initialize a new database
 
+# --- Bot Functions
 @bot.event
 async def on_ready():
     log.info(log_msg(['login', bot.user.name, bot.user.id]))
@@ -517,6 +612,248 @@ async def misquote(ctx , *target : discord.User):
                           'invalid_misquote_request',
                           ctx.message.channel.name]))
 
+# --- Pin commands ---
+@bot.command(aliases=['p'])
+async def put(ctx, *, request:str):
+    """
+    Stores an existing message from the same channel as a pin with an alias.
+    request = (MessageID|MessageURL) (alias)
+
+    Aliases must be < 25 characters and unique to the server.
+    Aliases are case-insensitive.
+
+    (Make sure you have Discord's developer mode turned on to get Message IDs)
+    """
+    log.info(log_msg(['received_request',
+                      'quote',
+                      ctx.message.channel.name,
+                      ctx.message.author.name,
+                      ctx.message.author.id]))
+
+    # Parse out message target and reply (if it exists)
+    msg_target = request.split(' ')[0]
+
+    # Clean up request regardless of success
+    try:
+        await ctx.message.delete()
+        log.info(log_msg(['deleted_request', msg_target]))
+    except Exception as e:
+        log.warning(log_msg(['delete_request_failed', msg_target, e]))
+
+    # Check if an alias is specified
+    if len(request.split(' ')) < 2:
+        log.info(log_msg(['sent_message',
+                          'invalid_pin_request',
+                          ctx.message.channel.name,
+                          'No alias specified']))
+        await ctx.send('You must specify an alias when pinning.')
+        return
+    alias = ' '.join(request.split(' ')[1:])
+
+    # Clean msg_target if it's weird
+    if '\r' in msg_target or '\n' in msg_target:
+      # If weird users decide to separate the msg_id from the reply using a line return
+      # clean it up.
+      if '\r' in msg_target:
+        _temp = msg_target.split('\r')
+      else:
+        _temp = msg_target.split('\n')
+
+      msg_target = _temp[0].strip()
+      alias = ' '.join([_temp[1].strip()] + request.split(' ')[1:]).lower()
+
+    log.info(log_msg(['received_request',
+                      'pin',
+                      ctx.message.channel.name,
+                      ctx.message.author.name,
+                      ctx.message.author.id]))
+
+    if len(alias) == 0:
+        log.info(log_msg(['sent_message',
+                          'invalid_pin_request',
+                          ctx.message.channel.name,
+                          'No alias specified']))
+        await ctx.send('You must specify an alias when pinning.')
+        return
+    
+    if len(alias) > 25:
+        log.info(log_msg(['sent_message',
+                          'invalid_pin_request',
+                          ctx.message.channel.name,
+                          'Alias too long.']))
+        await ctx.send('Your alias must be <=25 characters.')
+        return
+
+    # Check if alias already exists
+    ### MAYBE WE SHOULD JUST SET A PRIMARY KEY IN THE SCHEMA AND HANDLE THE
+    ### SQLITE ERROR
+    aliases = db_execute(f"SELECT alias FROM pins WHERE alias = \"{alias}\";")
+    if len(aliases) > 0:
+        log.info(log_msg(['sent_message',
+                          'invalid_pin_request',
+                          ctx.message.channel.name,
+                          'Alias not unique.']))
+        await ctx.send(f'*{alias}* has already been used as a pin alias')
+        return
+
+    # If the Message target is numeric, assume it's the ID
+    # if not assume it's the message url
+    if msg_target.isnumeric():
+        msg_id = msg_target
+        channel_id = ctx.channel.id # if numeric, then channel is same as context
+
+        log.info(log_msg(['parsed_id_request',
+                        'pin',
+                        ctx.message.channel.name,
+                        msg_id]))
+    else:
+        try:
+            _, channel_id, msg_id = parse_msg_url(msg_target)
+        except ValueError as e:
+            log.info(log_msg(['parsed_url_request_failed', msg_target]))
+            return
+
+
+        log.info(log_msg(['parsed_url_request',
+                        'pin',
+                        ctx.message.channel.name,
+                        msg_target,
+                        msg_id]))
+
+    try:
+        # Retrieve the message
+        msg_ = await ctx.guild.get_channel(channel_id).fetch_message(msg_id)
+        log.info(log_msg(['retrieved_quote',
+                      msg_id,
+                      ctx.guild.get_channel(channel_id).name,
+                      msg_.author.name,
+                      msg_.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                      ctx.message.author.name,
+                      msg_.clean_content]))
+
+        # Store the message
+        row = [alias, msg_.jump_url, ctx.message.author.name, ctx.message.created_at]
+        db_execute(
+                f"""INSERT INTO pins VALUES (
+                "{alias}",
+                "{msg_.jump_url}",
+                "{ctx.message.author.name}",
+                "{ctx.message.created_at}"
+            )
+            """)
+        log.info(log_msg(['insert_successful'] + row))
+
+        # Backup the database to S3
+        if bucket:
+            db_backup()
+
+        # Get, or create a webhook for the context channel
+        hook = await _get_hook(ctx, ctx.channel.id)
+
+        # Use WebHooks if possible
+        if hook:
+            payload = (
+                f"**{ctx.message.author.name}** just pinned " +
+                f"**{msg_.author.name}'s** [message](<{msg_.jump_url}>) to "+
+                f"*{alias}*"
+            )
+
+            out = await hook.send(
+                content=payload,
+                username=ctx.guild.me.name,
+                avatar_url=str(ctx.guild.me.avatar_url),
+                wait=True
+            )
+
+            log.info(log_msg(['sent_webhook_message',
+                              'pin successful',
+                              ctx.message.channel.name]))
+
+        else:
+            payload = (
+                f"**{ctx.message.author.name}** just pinned " +
+                f"**{msg_.author.name}'s** message to "+
+                f"*{alias}*"
+            )
+            await ctx.channel.send(payload)
+            log.info(log_msg(['sent_message',
+                              'pin successful',
+                              ctx.message.channel.name]))
+
+    except discord.errors.HTTPException as e:
+        log.warning(['msg_not_found', msg_id, ctx.message.author.mention, e])
+
+        # Return error if message not found.
+        await ctx.channel.send(
+            f"Couldn't find ({msg_id}) from channel {channel_id}. " +
+            f"Requested by {ctx.message.author.name}."
+        )
+
+        log.info(log_msg(['sent_message',
+                          'invalid_pin_request',
+                          ctx.message.channel.name]))
+
+@bot.command(aliases=['g'])
+async def get(ctx, *, alias:str):
+    pin = db_execute(
+            f"SELECT msg_url FROM pins WHERE alias=\"{alias.lower()}\""
+    )
+    if len(pin) > 0:
+        # Get the message url
+        msg_url = pin[0][0]
+
+        log.info(log_msg(['retrieved_pin',
+                          'pin',
+                          alias.lower()]))
+
+        # Quote it
+        quote_cmd = ctx.bot.get_command('quote')
+        await ctx.invoke(quote_cmd, request=msg_url)
+    else:
+        log.info(log_msg(['sent_message',
+                          'pin_not_found',
+                          ctx.message.channel.name]))
+        await ctx.channel.send(f'*{alias}* not found in pins')
+        return
+
+@bot.command(aliases=['l'])
+async def list(ctx, *, request:str=''):
+    """Lists all (or all matching) aliases in the pin database
+    and direct messages to the requester."""
+
+    log.info(log_msg(['list_request_received',
+                      'pin',
+                       request,
+                       ctx.author.name]))
+
+    # Clean up request regardless of success
+    try:
+        await ctx.message.delete()
+        log.info(log_msg(['deleted_request', f'list \"{request}\"']))
+    except Exception as e:
+        log.warning(log_msg(['delete_request_failed', f'list \"{request}\"', e]))
+
+    _temp = db_execute(
+            f"SELECT alias FROM pins"
+    )
+
+    all_aliases = [x[0] for x in _temp]
+
+    ### SKELETON: Add matching logic here
+    matching_aliases = all_aliases
+
+    await ctx.message.author.send(
+            "All matching aliases:\n\n\t" +
+            '\n    '.join(all_aliases)
+        )
+
+    log.info(log_msg(['list_matches_sent',
+                      'pin',
+                       request,
+                       ctx.author.name,
+                       len(matching_aliases)]))
+
+    return
 
 @bot.command()
 async def test(ctx):
