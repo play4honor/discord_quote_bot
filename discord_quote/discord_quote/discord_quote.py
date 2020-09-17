@@ -12,6 +12,7 @@ import random
 from pathlib import Path
 import sqlite3
 import boto3
+import botocore
 
 import author_model as author
 from utils import log_msg, block_format, parse_msg_url
@@ -34,18 +35,22 @@ log.setLevel(logging.DEBUG)
 
 # --- Initialize S3
 # Check to see if we can initialize
-try:
-    session = boto3.Session(
-        os.environ['aws_access_key_id'],
-        os.environ['aws_secret_access_key'],
-        os.environ['aws_region']
-    )
+session = boto3.Session()
+bucket = session.resource('s3').Bucket('p4h')
+#bucket = session.resource('s3').Bucket(os.environ['discord_quote_bot_bucket'])
 
-    bucket = session.resource('s3').Bucket(os.environ['discord_quote_bot_bucket'])
-except KeyError as e:
+# Check for permissions
+try:
+    if bucket:
+        bucket.load()
+except botocore.exceptions.NoCredentialsError as e:
+    logging.error(log_msg(['No credentials found', e]))
     session = None
     bucket = None
-    logging.error(log_msg(['missing_environment_variable', e]))
+except botocore.exceptions.ClientError as e:
+    logging.error(log_msg(['Bad credentials: could not access bucket', e]))
+    session = None
+    bucket = None
 
 # --- Database functions
 def db_load():
