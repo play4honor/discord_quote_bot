@@ -69,11 +69,14 @@ def db_load():
     if not Path('./discord_quote_bot_data.db').exists() and bucket:
         # If missing, attempt to download backup file
         logging.info(log_msg(['db_backup', 'download', 'attempt']))
-
-        bucket.download_file(
-            'discord_quote_bot_data.db',
-            'discord_quote_bot_data.db'
-        )
+ 
+        try:
+            bucket.download_file(
+                'discord_quote_bot_data.db',
+                'discord_quote_bot_data.db'
+            )
+        except botocore.exceptions.ClientError:
+            logging.error(log_msg(['db_backup', 'download', 'failed']))
 
         logging.info(log_msg(['db_backup', 'download', 'successful']))
 
