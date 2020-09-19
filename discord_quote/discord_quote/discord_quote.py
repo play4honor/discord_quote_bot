@@ -70,7 +70,7 @@ def db_load():
     if not Path(f'./{db_filename}').exists() and bucket:
         # If missing, attempt to download backup file
         logging.info(log_msg(['db_backup', 'download', 'attempt']))
- 
+
         try:
             bucket.download_file(db_filename, db_filename)
         except botocore.exceptions.ClientError as e:
@@ -929,6 +929,53 @@ async def list(ctx, *, request:str=''):
                            ctx.author.name,
                            len(matching_aliases)]))
 
+
+    return
+
+@bot.command(aliases=['d'])
+async def delete(ctx, *, alias:str):
+    """Deletes an alias from the set of stored pins.
+    """
+    alias = alias.lower().strip()
+
+    log.info(log_msg(['delete_request_received',
+                      'pin',
+                       alias,
+                       ctx.author.name]))
+
+    # Clean up request regardless of success
+    try:
+        await ctx.message.delete()
+        log.info(log_msg(['deleted_request', f'delete \"{alias}\"']))
+    except Exception as e:
+        log.warning(log_msg(['delete_request_failed', f'delete \"{alias}\"', e]))
+
+    # Check if the alias exists in the pin database
+    pin = db_execute(
+            f"SELECT msg_url FROM pins WHERE lower(alias)=\"{alias}\""
+    )
+
+    # If it exists, delete it.
+    if len(pin) > 0:
+        db_execute(
+            f"DELETE FROM pins WHERE lower(alias)=\"{alias}\""
+        )
+
+        log.info(log_msg(['deleted_pin',
+                          'pin',
+                          alias.lower()]))
+
+        # Backup the database to S3
+        if bucket:
+            db_backup()
+
+
+        await ctx.channel.send(f'*{alias}* deleted from pins by **{ctx.author.name}**')
+    else:
+        log.info(log_msg(['sent_message',
+                          'pin_not_found',
+                          ctx.message.channel.name]))
+        await ctx.channel.send(f'*{alias}* not found in pins')
 
     return
 
