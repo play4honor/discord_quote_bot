@@ -824,9 +824,6 @@ async def get(ctx, *, alias:str):
 
 @bot.command(aliases=['l'])
 async def list(ctx, *, request:str=''):
-    # Normalize the request
-    request=request.lower().strip()
-
     """Lists all (or all matching) aliases in the pin database
     and direct messages to the requester (along with a preview).
 
@@ -835,6 +832,9 @@ async def list(ctx, *, request:str=''):
 
     Also works when direct messaging the bot.
     """
+
+    # Normalize the request
+    request=request.lower().strip()
 
     log.info(log_msg(['list_request_received',
                       'pin',
