@@ -798,7 +798,7 @@ async def put(ctx, *, request:str):
 
 @bot.command(aliases=['g'])
 async def get(ctx, *, alias:str):
-
+    """Get a pinned message by providing the alias."""
     alias = alias.lower()
     pin = db_execute(
             f"SELECT msg_url FROM pins WHERE lower(alias)=\"{alias}\""
@@ -814,7 +814,10 @@ async def get(ctx, *, alias:str):
 
         # Quote it
         quote_cmd = ctx.bot.get_command('quote')
-        await ctx.invoke(quote_cmd, request=msg_url)
+        await ctx.invoke(quote_cmd, request=(
+            msg_url + f' *using the __**{alias}**__ pin.*'
+            )
+        )
     else:
         log.info(log_msg(['sent_message',
                           'pin_not_found',
