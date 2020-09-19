@@ -70,7 +70,7 @@ def db_load():
     if not Path(f'./{db_filename}').exists() and bucket:
         # If missing, attempt to download backup file
         logging.info(log_msg(['db_backup', 'download', 'attempt']))
- 
+
         try:
             bucket.download_file(db_filename, db_filename)
         except botocore.exceptions.ClientError as e:
@@ -143,7 +143,7 @@ async def on_ready():
             and isinstance(channel, discord.TextChannel)):
             log.info(log_msg([
                 'sent_message',
-                'channel_join', 
+                'channel_join',
                 '\\'.join([channel.guild.name, channel.name])]
                 )
             )
@@ -471,7 +471,7 @@ async def bot_quote(ctx, msg_, *reply : str):
         # Simplest case, just quoting a non-quotebot message, with no reply
         output = (
             f"**{author} [{message_time}] said:** _via " +
-            f"{ctx.message.author.name}_\n" + 
+            f"{ctx.message.author.name}_\n" +
             block_format(clean_content)
         )
     elif not reply and quote:
@@ -533,7 +533,7 @@ async def misquote(ctx , *target : discord.User):
     # Helper to check that this is the right message
     def pred(m):
         return (
-            m.author == ctx.message.author 
+            m.author == ctx.message.author
             and isinstance(m.channel, discord.DMChannel)
         )
     try:
@@ -551,7 +551,7 @@ async def misquote(ctx , *target : discord.User):
                         ctx.message.channel.name,
                         name]))
 
-    
+
         # DM requester to get message to misattribute
         await ctx.message.author.send(
             f"What would you like to be misattributed to {name}?"
@@ -580,7 +580,7 @@ async def misquote(ctx , *target : discord.User):
             user_id, likelihood = author.get_best_author_id(reply.clean_content, faketime.hour)
             user = await bot.fetch_user(user_id)
             name = user.name
-            
+
             log.info(log_msg(['predicted_author',
                             'best_author_id',
                             user,
@@ -630,6 +630,9 @@ async def put(ctx, *, request:str):
                       ctx.message.author.name,
                       ctx.message.author.id]))
 
+    # Enforce normalization
+    request = request.lower().strip()
+
     # Parse out message target and reply (if it exists)
     msg_target = request.split(' ')[0]
 
@@ -675,7 +678,7 @@ async def put(ctx, *, request:str):
                           'No alias specified']))
         await ctx.send('You must specify an alias when pinning.')
         return
-    
+
     if len(alias) > 25:
         log.info(log_msg(['sent_message',
                           'invalid_pin_request',
@@ -687,7 +690,7 @@ async def put(ctx, *, request:str):
     # Check if alias already exists
     ### MAYBE WE SHOULD JUST SET A PRIMARY KEY IN THE SCHEMA AND HANDLE THE
     ### SQLITE ERROR
-    aliases = db_execute(f"SELECT alias FROM pins WHERE alias = \"{alias}\";")
+    aliases = db_execute(f"SELECT alias FROM pins WHERE lower(alias) = \"{alias}\";")
     if len(aliases) > 0:
         log.info(log_msg(['sent_message',
                           'invalid_pin_request',
@@ -795,9 +798,12 @@ async def put(ctx, *, request:str):
 
 @bot.command(aliases=['g'])
 async def get(ctx, *, alias:str):
+    """Get a pinned message by providing the alias."""
+    alias = alias.lower()
     pin = db_execute(
-            f"SELECT msg_url FROM pins WHERE alias=\"{alias.lower()}\""
+            f"SELECT msg_url FROM pins WHERE lower(alias)=\"{alias}\""
     )
+
     if len(pin) > 0:
         # Get the message url
         msg_url = pin[0][0]
@@ -808,7 +814,10 @@ async def get(ctx, *, alias:str):
 
         # Quote it
         quote_cmd = ctx.bot.get_command('quote')
-        await ctx.invoke(quote_cmd, request=msg_url)
+        await ctx.invoke(quote_cmd, request=(
+            msg_url + f' *using the __**{alias}**__ pin.*'
+            )
+        )
     else:
         log.info(log_msg(['sent_message',
                           'pin_not_found',
@@ -819,7 +828,16 @@ async def get(ctx, *, alias:str):
 @bot.command(aliases=['l'])
 async def list(ctx, *, request:str=''):
     """Lists all (or all matching) aliases in the pin database
-    and direct messages to the requester."""
+    and direct messages to the requester (along with a preview).
+
+    If called with no request, list all aliases but does not
+    generate a preview for each alias.
+
+    Also works when direct messaging the bot.
+    """
+
+    # Normalize the request
+    request=request.lower().strip()
 
     log.info(log_msg(['list_request_received',
                       'pin',
@@ -834,24 +852,133 @@ async def list(ctx, *, request:str=''):
         log.warning(log_msg(['delete_request_failed', f'list \"{request}\"', e]))
 
     _temp = db_execute(
-            f"SELECT alias FROM pins"
+            f"SELECT * FROM pins"
     )
 
-    all_aliases = [x[0] for x in _temp]
+    # First element is alias, second element is msg_url
+    try:
+        # Matching logic here, also parse msg_urls for previews
+        if request != '':
+            matching_aliases = [{'alias':x[0], 'msg_id_tuple':parse_msg_url(x[1])}
+                                for x in _temp
+                                if request in x[0].lower()]
+        else:
+            matching_aliases = [{'alias':x[0], 'msg_id_tuple':(None, None, None)}
+                                for x in _temp]
 
-    ### SKELETON: Add matching logic here
-    matching_aliases = all_aliases
+        log.info(log_msg(['parsed_matching_alias_url_request',
+                        'pin',
+                        request]))
+    except ValueError as e:
+        matching_aliases=[]
+        log.info(log_msg(['parsed_url_request_failed', msg_target]))
 
-    await ctx.message.author.send(
-            "All matching aliases:\n\n\t" +
-            '\n    '.join(all_aliases)
+
+    if len(matching_aliases)==0:
+        await ctx.message.author.send(f"No aliases matching *{request}*.")
+
+        log.info(log_msg(['no_matches_sent',
+                          'pin',
+                           request,
+                           ctx.author.name,
+                           len(matching_aliases)]))
+    else:
+        # Construct aliases with preview
+        out = ''
+        for msg in matching_aliases:
+            alias = msg['alias']
+            guild_id = msg['msg_id_tuple'][0]
+            channel_id = msg['msg_id_tuple'][1]
+            msg_id = msg['msg_id_tuple'][2]
+            try:
+                guild = ctx.bot.get_guild(guild_id)
+                channel = guild.get_channel(channel_id)
+
+                # Fetch the pinned message
+                raw_msg = (
+                        await channel.fetch_message(msg_id)
+                )
+
+                log.info(log_msg(['retrieved_message', 'pin', channel_id, msg_id]))
+
+                # Grab a 48 character preview
+                # (max 25 character alias + 7 filler characters means max line
+                # length is 80)
+                msg_preview = (
+                    raw_msg
+                    .content[0:min(len(raw_msg.content), 48)]
+                    .replace('\n', ' ')
+                    .replace('\r', ' ')
+                    .strip()
+                )
+
+                # Append to output
+                out += '\n' + f"**{alias}** — (*\"{msg_preview}\"*)"
+
+                log.info(log_msg(['generated_preview', 'pin', channel_id, msg_id]))
+
+            except Exception as e:
+                out += '\n' + f"**{alias}** — (*No preview.*)"
+                log.error(log_msg(['failed_to_preview', 'pin', e]))
+                continue
+
+        await ctx.message.author.send(
+            "**All matching aliases:**" + out
         )
 
-    log.info(log_msg(['list_matches_sent',
+        log.info(log_msg(['list_matches_sent',
+                          'pin',
+                          request,
+                           ctx.author.name,
+                           len(matching_aliases)]))
+
+
+    return
+
+@bot.command(aliases=['d'])
+async def delete(ctx, *, alias:str):
+    """Deletes an alias from the set of stored pins.
+    """
+    alias = alias.lower().strip()
+
+    log.info(log_msg(['delete_request_received',
                       'pin',
-                       request,
-                       ctx.author.name,
-                       len(matching_aliases)]))
+                       alias,
+                       ctx.author.name]))
+
+    # Clean up request regardless of success
+    try:
+        await ctx.message.delete()
+        log.info(log_msg(['deleted_request', f'delete \"{alias}\"']))
+    except Exception as e:
+        log.warning(log_msg(['delete_request_failed', f'delete \"{alias}\"', e]))
+
+    # Check if the alias exists in the pin database
+    pin = db_execute(
+            f"SELECT msg_url FROM pins WHERE lower(alias)=\"{alias}\""
+    )
+
+    # If it exists, delete it.
+    if len(pin) > 0:
+        db_execute(
+            f"DELETE FROM pins WHERE lower(alias)=\"{alias}\""
+        )
+
+        log.info(log_msg(['deleted_pin',
+                          'pin',
+                          alias.lower()]))
+
+        # Backup the database to S3
+        if bucket:
+            db_backup()
+
+
+        await ctx.channel.send(f'*{alias}* deleted from pins by **{ctx.author.name}**')
+    else:
+        log.info(log_msg(['sent_message',
+                          'pin_not_found',
+                          ctx.message.channel.name]))
+        await ctx.channel.send(f'*{alias}* not found in pins')
 
     return
 
