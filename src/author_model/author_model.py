@@ -1,6 +1,6 @@
 import torch
 import re
-from AuthorNet import AuthorNet
+from src.author_model.AuthorNet import AuthorNet
 
 _DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
