@@ -16,6 +16,9 @@ def log_msg(data):
 
 # Format a message as a block quotes.
 def block_format(message):
+    """
+    Formats a given message as a Markdown block quote
+    """
 
     # Find new line positions
     insert_idx = [pos for pos, char in enumerate(message) if char == "\n"]
@@ -32,7 +35,7 @@ def block_format(message):
 
 def parse_msg_url(url):
     """
-    Parses out the message id from a discord mesasge url
+    Parses out the message id from a discord message url
     """
 
     if not re.match(r'^https:\/\/discord(app)*\.com\/channels\/', url):
