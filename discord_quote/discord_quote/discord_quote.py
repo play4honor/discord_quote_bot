@@ -799,7 +799,21 @@ async def put(ctx, *, request:str):
 @bot.command(aliases=['g'])
 async def get(ctx, *, alias:str):
     """Get a pinned message by providing the alias."""
+
     alias = alias.lower()
+
+    log.info(log_msg(['get_request_received',
+                      'pin',
+                       alias,
+                       ctx.author.name]))
+
+    # Clean up request regardless of success
+    try:
+        await ctx.message.delete()
+        log.info(log_msg(['deleted_request', f'delete \"{alias}\"']))
+    except Exception as e:
+        log.warning(log_msg(['delete_request_failed', f'delete \"{alias}\"', e]))
+
     pin = db_execute(
             f"SELECT msg_url FROM pins WHERE lower(alias)=\"{alias}\""
     )
