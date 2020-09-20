@@ -1,10 +1,12 @@
 import torch
 import re
+import os
 from src.author_model.AuthorNet import AuthorNet
 
 _DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-_CHECKPOINT = torch.load("Candidate_1_Adam_06701", map_location=_DEVICE)
+_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'bin')
+_CHECKPOINT = torch.load(os.path.join(_DIR, "Candidate_1_Adam_06701"), map_location=_DEVICE)
 _VOCAB = _CHECKPOINT['vocab']
 
 _NET = AuthorNet(24, 11, _VOCAB).to(_DEVICE)
