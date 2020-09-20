@@ -15,8 +15,11 @@ import boto3
 import botocore
 
 import src.author_model.author_model as author
-from src.bot.utils import log_msg, block_format, parse_msg_url
+from src.bot.utils import log_msg, block_format, parse_msg_url, parse_request, clean_up_request
 import src.bot.db as db
+
+from src.bot.webhook_quote import get_hook, webhook_quote
+from src.bot.quote import bot_quote
 
 # Configure logging
 log = logging.getLogger(__name__)
@@ -59,7 +62,7 @@ description = '''
             '''
 
 bot = commands.Bot(command_prefix='!', description=description)
-db.db_load()   # Initialize a new database
+db.db_load(bucket)   # Initialize a new database
 
 # --- Bot Functions
 @bot.event
@@ -130,27 +133,10 @@ async def quote(ctx, *, request:str):
                       ctx.message.author.name,
                       ctx.message.author.id]))
 
-    # Parse out message target and reply (if it exists)
-    msg_target = request.split(' ')[0]
-    reply = request.split(' ')[1:]
+    msg_target, reply = parse_request(request)
 
     # Clean up request regardless of success
-    try:
-        await ctx.message.delete()
-        log.info(log_msg(['deleted_request', msg_target]))
-    except Exception as e:
-        log.warning(log_msg(['delete_request_failed', msg_target, e]))
-
-    if '\r' in msg_target or '\n' in msg_target:
-      # If weird users decide to separate the msg_id from the reply using a line return
-      # clean it up.
-      if '\r' in msg_target:
-        _temp = msg_target.split('\r')
-      else:
-        _temp = msg_target.split('\n')
-
-      msg_target = _temp[0].strip()
-      reply = [_temp[1].strip()] + request.split(' ')[1:]
+    await clean_up_request(ctx, msg_target)
 
     # If the Message target is numeric, assume it's the ID
     # if not assume it's the message url
@@ -190,11 +176,11 @@ async def quote(ctx, *, request:str):
                       msg_.clean_content]))
 
         # Get, or create a webhook for the context channel
-        hook = await _get_hook(ctx, ctx.channel.id)
+        hook = await get_hook(ctx, bot, ctx.channel.id)
 
         # Use WebHooks if possible
         if hook:
-            payload = await webhook_quote(ctx, msg_, *reply)
+            payload = await webhook_quote(ctx, bot, msg_, *reply)
 
             # We retain the output (so we can reference it, if necessary)
             out = await hook.send(
@@ -210,7 +196,7 @@ async def quote(ctx, *, request:str):
                               ctx.message.channel.name]))
 
         else:
-            await bot_quote(ctx, msg_, *reply)
+            await bot_quote(ctx, bot, msg_, *reply)
 
     except discord.errors.HTTPException as e:
         log.warning(['msg_not_found', msg_id, ctx.message.author.mention, e])
@@ -224,240 +210,6 @@ async def quote(ctx, *, request:str):
         log.info(log_msg(['sent_message',
                           'invalid_quote_request',
                           ctx.message.channel.name]))
-
-# Helper function for quote: gets a WebHook
-async def _get_hook(ctx, channel_id=None):
-    # If no specific channel_id is specified, then we want the channel of
-    # the ctx
-    if not channel_id:
-        channel = ctx.channel
-    else:
-        channel = ctx.guild.get_channel(channel_id)
-
-    # Check for 'Manage WebHook' permission and return if missing permission
-    if not channel.permissions_for(ctx.guild.me).manage_webhooks:
-        return
-
-    # Figure out the appropriate webhook
-    hook = None
-    webhooks = await channel.webhooks()
-    if webhooks:
-        # If there's an existing webhook, just use that.
-        hook = webhooks[0]
-        log.info(log_msg(['webhook_found', hook.name]))
-    else:
-        log.info(log_msg(['webhook_not_found']))
-
-        # Otherwise, create a webhook.
-        hook = await channel.create_webhook(name=bot.user.name)
-        log.info(log_msg(['webhook_created', hook.name]))
-
-    return(hook)
-
-async def webhook_quote(ctx, msg_, *reply: str):
-    # This version depends on everything being well quoted (e.g., with jumpurls)
-    # If the message that has been passed is assigned to the bot, then it is a
-    # previous quote.
-    quote = (msg_.author.name == bot.user.name)
-    if not quote:
-        if reply:
-            output = (
-                await _format_message(ctx, msg_, 'said') +
-                f"**{ctx.message.author.name} responded:** {' '.join(reply)}"
-            )
-        if not reply:
-            output = (
-                await _format_message(ctx, msg_, 'said') +
-                f"_via {ctx.message.author.name}_"
-            )
-    elif quote:
-
-        if reply:
-            output = (
-                await _format_quote(ctx, msg_) +
-                f"\n**{ctx.message.author.name} responded:** {' '.join(reply)}"
-            )
-        elif not reply:
-            output = await _format_quote(ctx, msg_)
-    else:
-        pass
-
-    return(output)
-
-# Helper function for WebHook Quote (quoting simple messages)
-async def _format_message(ctx, msg_, action):
-    # Figure out the respective times
-    current_time = arrow.get(ctx.message.created_at)
-    original_message_time = arrow.get(msg_.created_at)
-    relative_time = original_message_time.humanize(current_time)
-
-    # Construct the channel jump_url
-    channel_url = (
-            f"https://discord.com/channels/"
-        f"{msg_.guild.id}/{msg_.channel.id}"
-    )
-
-    output = (
-        f"**{msg_.author.name} {action} " +
-        f"[{relative_time}](<{msg_.jump_url}>) " +
-        f"in [#{msg_.channel.name}](<{channel_url}>):**\n"+
-        block_format(msg_.clean_content) + "\n"
-    )
-
-    return(output)
-
-# Helper function for WebHook Quote (quoting quotes)
-async def _format_quote(ctx, msg_):
-    output = msg_.content
-
-    # Identify the response in the quote without a jump url
-    last_responder = re.search(r'\*\*(.*)\sresponded:\*\*\s', output)
-
-    current_time = arrow.get(ctx.message.created_at)
-
-    # Adjust old relative times
-    # First, identify the old times
-    old_relative_times = re.findall(
-        r'(\*\*.*\[(.*)\]\(\<' +
-        r'https:\/\/discordapp\.com\/channels\/[0-9]*\/[0-9]*\/([0-9]*)' +
-        r'\>\))',
-        output
-    )
-
-    # Now, re-humanize these times:
-    if old_relative_times:
-        log.info(log_msg(['old_relative_times', 'found']))
-        for i in range(len(old_relative_times)):
-            _temp = old_relative_times[i]
-
-            # initialize the target (_old_speaker)
-            # and the new content (_new_speaker)
-            _old_speaker = _temp[0]
-            _new_speaker = _temp[0]
-
-            # get the associated old message
-            _old_msg = await ctx.channel.fetch_message(_temp[2])
-            log.info(log_msg(['retrieved_quote',
-                          _old_msg.id,
-                          ctx.message.channel.name,
-                          _old_msg.author.name,
-                          _old_msg.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                          ctx.message.author.name,
-                          _old_msg.clean_content]))
-
-            # rehumanize the time
-            _old_msg_time = arrow.get(_old_msg.created_at)
-            _new_relative_time = _old_msg_time.humanize(current_time)
-
-            # format the replacement string
-            _new_speaker = _new_speaker.replace(_temp[1], _new_relative_time)
-
-            # update the output
-            output = output.replace(_old_speaker, _new_speaker)
-
-
-    # Edit in the new relative time for the last response
-    quotebot_message_time = arrow.get(msg_.created_at)
-    relative_time = quotebot_message_time.humanize(current_time)
-
-    # Append the jump url into the quote
-    if last_responder:
-        _old_speaker = f"**{last_responder.group(1)} responded:**"
-        _new_speaker = (
-            f"**{last_responder.group(1)} responded " +
-            f"[{relative_time}](<{msg_.jump_url}>):**"
-        )
-
-        output = output.replace(_old_speaker, _new_speaker)
-
-    return(output)
-
-async def bot_quote(ctx, msg_, *reply : str):
-    # This is the old way to quote things, if you don't have the 'Manage
-    # WebHooks' permission, but you have a bot user, then this is what will be
-    # used.
-
-    quote = False
-    author = msg_.author.name
-    message_time = msg_.created_at.strftime("%Y-%m-%d %H:%M:%S")
-
-    # If previously quoted, find the original author
-    if msg_.author.name == bot.user.name:
-        quote = True
-
-        # Run a regex search for the author name and if you can find it
-        # re-attribute. If you can't find it, it'll just be the bot's name
-        _author = re.search(r"^\*\*(.*)\[(.*)\]\ssaid:\*\*", msg_.clean_content)
-        if _author:
-            author = _author.group(1)
-            log.info(log_msg(['found_original_author', msg_.id, author]))
-            message_time = _author.group(2)
-            log.info(log_msg(['found_original_timestamp', msg_.id, message_time]))
-
-    clean_content = msg_.clean_content
-
-    # Format output message, handling replies and quotes
-    if not reply and not quote:
-        log.info(log_msg(['formatting_quote', 'noreply|noquote']))
-        # Simplest case, just quoting a non-quotebot message, with no reply
-        output = (
-            f"**{author} [{message_time}] said:** _via " +
-            f"{ctx.message.author.name}_\n" +
-            block_format(clean_content)
-        )
-    elif not reply and quote:
-        log.info(log_msg(['formatting_quote', 'noreply|quote']))
-
-        # Find the original quoter
-        _quoter = re.search("__via.*?__", msg_.content)
-        if _quoter:
-            # Replace the original quoter with the new quoter
-            output = msg_.content.replace(
-                _quoter.group(0),
-                f"__via {ctx.message.author.name}__"
-            )
-        else:
-            # If the regex breaks, just forward the old message.
-            output = msg_.content
-    elif reply and quote:
-        log.info(log_msg(['formatting_quote', 'reply|quote']))
-
-        # Detect Last Response so we can hyperlink
-        _last_response = re.search(
-                r"\*\*[A-Za-z0-9]*\s(\[[A-Za-z0-9\s]*\])\sresponded",
-                msg_.content
-        )
-
-        if _last_response:
-            clean_content = clean_content.replace(
-                    _last_response.group(1),
-                    f"[{_last_response.group(1)}({msg_.jump_url})]"
-            )
-
-        # Reply to a quotebot quote with a reply
-        output = (
-            f"{clean_content}\n**{ctx.message.author.name} " +
-            f"[{ctx.message.created_at.strftime('%Y-%m-%d %H:%M:%S')}] " +
-            f"responded:** {' '.join(reply)}"
-        )
-    else:
-        log.info(log_msg(['formatting_quote', 'reply|quote']))
-
-        output = (
-                f"**{author} [{msg_.created_at.strftime('%Y-%m-%d %H:%M:%S')}] " +
-                f"said:** \n" +
-                block_format(clean_content) +
-                "\n" +
-                f"**{ctx.message.author.name} " +
-                f"[{ctx.message.created_at.strftime('%Y-%m-%d %H:%M:%S')}] " +
-                f"responded:** {' '.join(reply)}"
-        )
-
-    log.info(log_msg(['formatted_quote', ' '.join(reply)]))
-
-    await ctx.channel.send(output)
-
-    log.info(log_msg(['sent_message', 'quote', ctx.message.channel.name]))
 
 @bot.command()
 async def misquote(ctx , *target : discord.User):
@@ -564,15 +316,11 @@ async def put(ctx, *, request:str):
     # Enforce normalization
     request = request.lower().strip()
 
-    # Parse out message target and reply (if it exists)
-    msg_target = request.split(' ')[0]
-
-    # Clean up request regardless of success
-    try:
-        await ctx.message.delete()
-        log.info(log_msg(['deleted_request', msg_target]))
-    except Exception as e:
-        log.warning(log_msg(['delete_request_failed', msg_target, e]))
+    log.info(log_msg(['received_request',
+                    'pin',
+                    ctx.message.channel.name,
+                    ctx.message.author.name,
+                    ctx.message.author.id]))
 
     # Check if an alias is specified
     if len(request.split(' ')) < 2:
@@ -582,25 +330,12 @@ async def put(ctx, *, request:str):
                           'No alias specified']))
         await ctx.send('You must specify an alias when pinning.')
         return
-    alias = ' '.join(request.split(' ')[1:])
 
-    # Clean msg_target if it's weird
-    if '\r' in msg_target or '\n' in msg_target:
-      # If weird users decide to separate the msg_id from the reply using a line return
-      # clean it up.
-      if '\r' in msg_target:
-        _temp = msg_target.split('\r')
-      else:
-        _temp = msg_target.split('\n')
+    # Parse out message target and reply (if it exists)
+    msg_target, alias = parse_request(request, norm_text=True)
 
-      msg_target = _temp[0].strip()
-      alias = ' '.join([_temp[1].strip()] + request.split(' ')[1:]).lower()
-
-    log.info(log_msg(['received_request',
-                      'pin',
-                      ctx.message.channel.name,
-                      ctx.message.author.name,
-                      ctx.message.author.id]))
+    # Clean up request regardless of success
+    clean_up_request(ctx, msg_target)
 
     if len(alias) == 0:
         log.info(log_msg(['sent_message',
@@ -621,7 +356,7 @@ async def put(ctx, *, request:str):
     # Check if alias already exists
     ### MAYBE WE SHOULD JUST SET A PRIMARY KEY IN THE SCHEMA AND HANDLE THE
     ### SQLITE ERROR
-    aliases = db_execute(f"SELECT alias FROM pins WHERE lower(alias) = \"{alias}\";")
+    aliases = db.db_execute(f"SELECT alias FROM pins WHERE lower(alias) = \"{alias}\";")
     if len(aliases) > 0:
         log.info(log_msg(['sent_message',
                           'invalid_pin_request',
@@ -667,7 +402,7 @@ async def put(ctx, *, request:str):
 
         # Store the message
         row = [alias, msg_.jump_url, ctx.message.author.name, ctx.message.created_at]
-        db_execute(
+        db.db_execute(
                 f"""INSERT INTO pins VALUES (
                 "{alias}",
                 "{msg_.jump_url}",
@@ -679,10 +414,10 @@ async def put(ctx, *, request:str):
 
         # Backup the database to S3
         if bucket:
-            db_backup()
+            db.db_backup()
 
         # Get, or create a webhook for the context channel
-        hook = await _get_hook(ctx, ctx.channel.id)
+        hook = await get_hook(ctx, bot, ctx.channel.id)
 
         # Use WebHooks if possible
         if hook:
@@ -745,7 +480,7 @@ async def get(ctx, *, alias:str):
     except Exception as e:
         log.warning(log_msg(['delete_request_failed', f'delete \"{alias}\"', e]))
 
-    pin = db_execute(
+    pin = db.db_execute(
             f"SELECT msg_url FROM pins WHERE lower(alias)=\"{alias}\""
     )
 
@@ -790,13 +525,9 @@ async def list(ctx, *, request:str=''):
                        ctx.author.name]))
 
     # Clean up request regardless of success
-    try:
-        await ctx.message.delete()
-        log.info(log_msg(['deleted_request', f'list \"{request}\"']))
-    except Exception as e:
-        log.warning(log_msg(['delete_request_failed', f'list \"{request}\"', e]))
+    clean_up_request(ctx, f'list \"{request}"')
 
-    _temp = db_execute(
+    _temp = db.db_execute(
             f"SELECT * FROM pins"
     )
 
@@ -816,7 +547,7 @@ async def list(ctx, *, request:str=''):
                         request]))
     except ValueError as e:
         matching_aliases=[]
-        log.info(log_msg(['parsed_url_request_failed', msg_target]))
+        log.info(log_msg(['parsed_url_request_failed', f'list \"{request}"']))
 
 
     if len(matching_aliases)==0:
@@ -892,20 +623,16 @@ async def delete(ctx, *, alias:str):
                        ctx.author.name]))
 
     # Clean up request regardless of success
-    try:
-        await ctx.message.delete()
-        log.info(log_msg(['deleted_request', f'delete \"{alias}\"']))
-    except Exception as e:
-        log.warning(log_msg(['delete_request_failed', f'delete \"{alias}\"', e]))
+    clean_up_request(ctx, f'delete \"{alias}\"')
 
     # Check if the alias exists in the pin database
-    pin = db_execute(
+    pin = db.db_execute(
             f"SELECT msg_url FROM pins WHERE lower(alias)=\"{alias}\""
     )
 
     # If it exists, delete it.
     if len(pin) > 0:
-        db_execute(
+        db.db_execute(
             f"DELETE FROM pins WHERE lower(alias)=\"{alias}\""
         )
 
@@ -915,7 +642,7 @@ async def delete(ctx, *, alias:str):
 
         # Backup the database to S3
         if bucket:
-            db_backup()
+            db.db_backup()
 
 
         await ctx.channel.send(f'*{alias}* deleted from pins by **{ctx.author.name}**')
