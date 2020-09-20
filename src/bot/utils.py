@@ -1,4 +1,6 @@
 import re
+import asyncio
+
 
 def log_msg(data):
     """
@@ -48,3 +50,38 @@ def parse_msg_url(url):
     server, channel, message = re.search(url_template, url).groups()
 
     return int(server), int(channel), int(message)
+
+def parse_request(request, norm_text=False):
+    '''
+    This parses an incoming message for the request and the reply
+    Functionally separates the first string from any subsequent strings
+    '''
+    # Parse out message target and reply (if it exists)
+    msg_target = request.split(' ')[0]
+    extra = request.split(' ')[1:]
+
+    if '\r' in msg_target or '\n' in msg_target:
+      # If weird users decide to separate the msg_id from the reply using a line return
+      # clean it up.
+      if '\r' in msg_target:
+        _temp = msg_target.split('\r')
+      else:
+        _temp = msg_target.split('\n')
+
+      msg_target = _temp[0].strip()
+      extra = [_temp[1].strip()] + request.split(' ')[1:]
+      
+    if norm_text:
+        msg_target = msg_target.strip().lower()
+        extra = extra.strip().lower()
+
+    return msg_target, extra
+
+async def clean_up_request(ctx, msg_target):
+    try:
+        await ctx.message.delete()
+        log.info(log_msg(['deleted_request', msg_target]))
+    except Exception as e:
+        log.warning(log_msg(['delete_request_failed', msg_target, e]))
+
+    return
