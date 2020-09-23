@@ -88,7 +88,7 @@ async def misquote(ctx , *target : discord.User):
 
 # --- Pin commands ---
 @bot.command(aliases=['p'])
-async def put(ctx, *, request:str):
+async def pin(ctx, *, request:str):
     """
     Stores an existing message from the same channel as a pin with an alias.
     request = (MessageID|MessageURL) (alias)
@@ -119,8 +119,8 @@ async def list(ctx, *, request:str=''):
     await old.list(ctx, request=request, bucket=bucket)
 
 @bot.command(aliases=['d'])
-async def delete(ctx, *, alias:str):
-    """Deletes an alias from the set of stored pins.
+async def drop(ctx, *, alias:str):
+    """Drop an alias from the set of stored pins.
     """
     await old.delete(ctx, alias=alias, bucket=bucket)
 
