@@ -14,6 +14,7 @@ import os
 sys.path.append('../../')
 from src.bot.utils import log_msg
 import src.bot.db as db
+import src.bot.legacy_discord_quote as old
 
 
 #-------------------------------------------------------------------------------
@@ -80,7 +81,7 @@ async def on_ready():
 async def me(ctx, *text : str):
     """
     """
-    pass
+    await old.me(ctx, *text)
 
 @bot.command(aliases=['q'])
 async def quote(ctx, *, request:str):
@@ -89,7 +90,7 @@ async def quote(ctx, *, request:str):
     request = (MessageID|MessageURL)
     (Make sure you have Discord's developer mode turned on to get Message IDs)
     """
-    pass
+    await old.quote(ctx, request=request, bot=bot)
 
 @bot.command()
 async def misquote(ctx , *target : discord.User):
@@ -139,8 +140,7 @@ async def delete(ctx, *, alias:str):
 async def test(ctx):
     """Function for debugging the current status of all the quote commands.
     """
-    pass
-
+    await old.test(ctx)
 
 if __name__=='__main__':
     if os.environ['DISCORD_QUOTEBOT_TOKEN']:
