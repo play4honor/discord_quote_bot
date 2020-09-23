@@ -233,7 +233,7 @@ async def quote(ctx, *, request:str, bot):
                           ctx.message.channel.name]))
  """
 # --- Pin commands ---
-async def put(ctx, *, request:str):
+async def put(ctx, *, request:str, bucket, bot):
     """
     Stores an existing message from the same channel as a pin with an alias.
     request = (MessageID|MessageURL) (alias)
@@ -292,7 +292,7 @@ async def put(ctx, *, request:str):
     # Check if alias already exists
     ### MAYBE WE SHOULD JUST SET A PRIMARY KEY IN THE SCHEMA AND HANDLE THE
     ### SQLITE ERROR
-    aliases = db.db_execute(f"SELECT alias FROM pins WHERE lower(alias) = \"{alias}\";")
+    aliases = db.db_execute(bucket, f"SELECT alias FROM pins WHERE lower(alias) = \"{alias}\";")
     if len(aliases) > 0:
         log.info(log_msg(['sent_message',
                           'invalid_pin_request',
@@ -339,6 +339,7 @@ async def put(ctx, *, request:str):
         # Store the message
         row = [alias, msg_.jump_url, ctx.message.author.name, ctx.message.created_at]
         db.db_execute(
+                bucket,
                 f"""INSERT INTO pins VALUES (
                 "{alias}",
                 "{msg_.jump_url}",
@@ -350,7 +351,7 @@ async def put(ctx, *, request:str):
 
         # Backup the database to S3
         if bucket:
-            db.db_backup()
+            db.db_backup(bucket)
 
         # Get, or create a webhook for the context channel
         hook = await get_hook(ctx, bot, ctx.channel.id)
@@ -398,7 +399,7 @@ async def put(ctx, *, request:str):
                           'invalid_pin_request',
                           ctx.message.channel.name]))
 
-async def get(ctx, *, alias:str):
+async def get(ctx, *, alias:str, bucket):
     """Get a pinned message by providing the alias."""
 
     alias = alias.lower()
@@ -416,6 +417,7 @@ async def get(ctx, *, alias:str):
         log.warning(log_msg(['delete_request_failed', f'delete \"{alias}\"', e]))
 
     pin = db.db_execute(
+            bucket,
             f"SELECT msg_url FROM pins WHERE lower(alias)=\"{alias}\""
     )
 
@@ -440,7 +442,7 @@ async def get(ctx, *, alias:str):
         await ctx.channel.send(f'*{alias}* not found in pins')
         return
 
-async def list(ctx, *, request:str=''):
+async def list(ctx, *, request:str='', bucket):
     """Lists all (or all matching) aliases in the pin database
     and direct messages to the requester (along with a preview).
 
@@ -462,6 +464,7 @@ async def list(ctx, *, request:str=''):
     clean_up_request(ctx, f'list \"{request}"')
 
     _temp = db.db_execute(
+            bucket,
             f"SELECT * FROM pins"
     )
 
@@ -545,7 +548,7 @@ async def list(ctx, *, request:str=''):
 
     return
 
-async def delete(ctx, *, alias:str):
+async def delete(ctx, *, alias:str, bucket):
     """Deletes an alias from the set of stored pins.
     """
     alias = alias.lower().strip()
@@ -560,12 +563,14 @@ async def delete(ctx, *, alias:str):
 
     # Check if the alias exists in the pin database
     pin = db.db_execute(
+            bucket,
             f"SELECT msg_url FROM pins WHERE lower(alias)=\"{alias}\""
     )
 
     # If it exists, delete it.
     if len(pin) > 0:
         db.db_execute(
+            bucket,
             f"DELETE FROM pins WHERE lower(alias)=\"{alias}\""
         )
 
@@ -575,7 +580,7 @@ async def delete(ctx, *, alias:str):
 
         # Backup the database to S3
         if bucket:
-            db.db_backup()
+            db.db_backup(bucket)
 
 
         await ctx.channel.send(f'*{alias}* deleted from pins by **{ctx.author.name}**')

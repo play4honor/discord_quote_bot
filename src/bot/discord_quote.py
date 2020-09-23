@@ -98,13 +98,13 @@ async def put(ctx, *, request:str):
 
     (Make sure you have Discord's developer mode turned on to get Message IDs)
     """
-    pass
+    await old.put(ctx, request=request, bucket=bucket, bot=bot)
 
 @bot.command(aliases=['g'])
 async def get(ctx, *, alias:str):
     """Get a pinned message by providing the alias.
     """
-    pass
+    await old.get(ctx, alias=alias, bucket=bucket)
 
 @bot.command(aliases=['l'])
 async def list(ctx, *, request:str=''):
@@ -116,13 +116,13 @@ async def list(ctx, *, request:str=''):
 
     Also works when direct messaging the bot.
     """
-    pass
+    await old.list(ctx, request=request, bucket=bucket)
 
 @bot.command(aliases=['d'])
 async def delete(ctx, *, alias:str):
     """Deletes an alias from the set of stored pins.
     """
-    pass
+    await old.delete(ctx, alias=alias, bucket=bucket)
 
 @bot.command()
 async def test(ctx):
