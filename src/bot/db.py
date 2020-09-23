@@ -51,7 +51,7 @@ def db_load(bucket):
 
     return(conn)
 
-def db_execute(query):
+def db_execute(bucket, query):
     """Wrapper to ensure that any queries that are launched at the
     database are launched inside a database context (i.e., the connection
     is closed after the query is run).
@@ -65,7 +65,7 @@ def db_execute(query):
         c.execute(query)
         return(c.fetchall())
 
-def db_backup():
+def db_backup(bucket):
     """When called, backs up the sqlite database to a pre-specified S3 bucket.
     """
     log.info(log_msg(['db_backup', 'upload', 'attempt']))
