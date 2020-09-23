@@ -73,9 +73,9 @@ def parse_request(request, norm_text=False):
       
     if norm_text:
         msg_target = msg_target.strip().lower()
-        extra = extra.strip().lower()
+        extra = [x.strip().lower() for x in extra]
 
-    return msg_target, extra
+    return msg_target, ' '.join(extra)
 
 async def clean_up_request(ctx, msg_target):
     try:
