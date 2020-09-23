@@ -2,7 +2,7 @@ import sqlite3
 import boto3
 import botocore
 import os
-import logging
+from logzero import logger as log
 from pathlib import Path
 
 from src.bot.utils import log_msg
@@ -25,19 +25,19 @@ def db_load(bucket):
     # Check if the database exists
     if not Path(f'./{db_filename}').exists() and bucket:
         # If missing, attempt to download backup file
-        logging.info(log_msg(['db_backup', 'download', 'attempt']))
+        log.info(log_msg(['db_backup', 'download', 'attempt']))
 
         try:
             bucket.download_file(db_filename, db_filename)
         except botocore.exceptions.ClientError as e:
-            logging.error(log_msg(['db_backup', 'download', 'failed', e]))
+            log.error(log_msg(['db_backup', 'download', 'failed', e]))
 
-        logging.info(log_msg(['db_backup', 'download', 'successful']))
+        log.info(log_msg(['db_backup', 'download', 'successful']))
 
     if Path(f'./{db_filename}').exists():
-        logging.info(log_msg(['database_found']))
+        log.info(log_msg(['database_found']))
     else:
-        logging.info(log_msg(['creating_new_database']))
+        log.info(log_msg(['creating_new_database']))
 
     conn = sqlite3.connect(f'./{db_filename}')
     c = conn.cursor()
@@ -68,7 +68,7 @@ def db_execute(query):
 def db_backup():
     """When called, backs up the sqlite database to a pre-specified S3 bucket.
     """
-    logging.info(log_msg(['db_backup', 'upload', 'attempt']))
+    log.info(log_msg(['db_backup', 'upload', 'attempt']))
 
     db_filename = os.environ['DISCORD_QUOTEBOT_DB_FILENAME']
     bucket.upload_file(
@@ -76,4 +76,4 @@ def db_backup():
         f'{db_filename}'
     )
 
-    logging.info(log_msg(['db_backup', 'upload', 'successful']))
+    log.info(log_msg(['db_backup', 'upload', 'successful']))
