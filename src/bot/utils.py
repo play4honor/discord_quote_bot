@@ -1,6 +1,6 @@
 import re
 import asyncio
-
+from logzero import logger as log
 
 def log_msg(data):
     """

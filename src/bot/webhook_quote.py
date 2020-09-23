@@ -2,7 +2,8 @@ import asyncio
 import arrow
 import re
 
-from src.bot.utils import block_format
+from src.bot.utils import block_format, log_msg
+from logzero import logger as log
 
 # Helper function for quote: gets a WebHook
 async def get_hook(ctx, bot, channel_id=None):

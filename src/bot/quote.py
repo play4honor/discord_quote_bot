@@ -1,7 +1,8 @@
 import asyncio
 import re
 
-from src.bot.utils import block_format
+from src.bot.utils import block_format, log_msg
+from logzero import logger as log
 
 async def bot_quote(ctx, bot, msg_, *reply : str):
     # This is the old way to quote things, if you don't have the 'Manage
