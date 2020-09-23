@@ -4,7 +4,6 @@ from discord.ext import commands
 import asyncio
 import json
 import re
-import logging
 import sys
 import os
 import arrow
