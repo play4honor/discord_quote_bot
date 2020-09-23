@@ -7,7 +7,7 @@ import boto3
 import botocore
 
 # Other Packages
-import logging
+from logzero import logger as log
 import sys
 import os
 
@@ -18,18 +18,6 @@ import src.bot.legacy_discord_quote as old
 
 
 #-------------------------------------------------------------------------------
-# Configure logging
-log = logging.getLogger(__name__)
-fmt = logging.Formatter(u'\u241e'.join(['%(asctime)s',
-                                        '%(name)s',
-                                        '%(levelname)s',
-                                        '%(funcName)s',
-                                        '%(message)s']))
-streamInstance = logging.StreamHandler(stream=sys.stdout)
-streamInstance.setFormatter(fmt)
-log.addHandler(streamInstance)
-log.setLevel(logging.DEBUG)
-
 # --- Initialize S3
 # Check to see if we can initialize
 session = boto3.Session()
@@ -40,11 +28,11 @@ try:
     if bucket:
         bucket.load()
 except botocore.exceptions.NoCredentialsError as e:
-    logging.error(log_msg(['No credentials found', e]))
+    log.error(log_msg(['No credentials found', e]))
     session = None
     bucket = None
 except botocore.exceptions.ClientError as e:
-    logging.error(log_msg(['Bad credentials: could not access bucket', e]))
+    log.error(log_msg(['Bad credentials: could not access bucket', e]))
     session = None
     bucket = None
 
