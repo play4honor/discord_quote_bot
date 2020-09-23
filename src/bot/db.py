@@ -60,7 +60,7 @@ def db_execute(bucket, query):
     """
     # We define this helper function to make sure that the db is closed
     # after every query. If not, easy way to corrupt the db.
-    with db_load() as conn:
+    with db_load(bucket) as conn:
         c = conn.cursor()
         c.execute(query)
         return(c.fetchall())
