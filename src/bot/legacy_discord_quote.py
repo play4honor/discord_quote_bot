@@ -37,54 +37,6 @@ log.setLevel(logging.DEBUG)
 # with open('sfv.json', 'r') as f:
 #     moves = json.loads(f.read())
 
-# --- Initialize S3
-# Check to see if we can initialize
-session = boto3.Session()
-bucket = session.resource('s3').Bucket(os.environ['DISCORD_QUOTEBOT_BUCKET'])
-
-# Check for permissions
-try:
-    if bucket:
-        bucket.load()
-except botocore.exceptions.NoCredentialsError as e:
-    logging.error(log_msg(['No credentials found', e]))
-    session = None
-    bucket = None
-except botocore.exceptions.ClientError as e:
-    logging.error(log_msg(['Bad credentials: could not access bucket', e]))
-    session = None
-    bucket = None
-
-
-# Bot Code Starts Here
-description = '''
-            A Bot to provide Basic Quoting functionality for Discord
-            '''
-
-bot = commands.Bot(command_prefix='!', description=description)
-db.db_load(bucket)   # Initialize a new database
-
-# --- Bot Functions
-@bot.event
-async def on_ready():
-    log.info(log_msg(['login', bot.user.name, bot.user.id]))
-
-    # Search all visibile channels and send a message letting users know that
-    # the bot is online. Only send in text channels that the bot has permission
-    # in.
-    for channel in bot.get_all_channels():
-        if (channel.permissions_for(channel.guild.me).send_messages
-            and isinstance(channel, discord.TextChannel)):
-            log.info(log_msg([
-                'sent_message',
-                'channel_join',
-                '\\'.join([channel.guild.name, channel.name])]
-                )
-            )
-
-#            await channel.send('yo we in there')
-
-
 #@bot.event
 #@asyncio.coroutine
 #def on_server_join(server):
@@ -96,7 +48,6 @@ async def on_ready():
 #
 #    log.info(log_msg(['sent_message', 'server_join', ctx.message.channel.name]))
 
-@bot.command()
 async def me(ctx, *text : str):
     log.info(log_msg(['received_request',
                       'me',
@@ -119,7 +70,6 @@ async def me(ctx, *text : str):
     except Exception as e:
         log.warning(log_msg(['delete_request_failed', ctx.message.id, e]))
 
-@bot.command(aliases=['q'])
 async def quote(ctx, *, request:str):
     """
     Quotes an existing message from the same channel.
@@ -211,7 +161,6 @@ async def quote(ctx, *, request:str):
                           'invalid_quote_request',
                           ctx.message.channel.name]))
 
-@bot.command()
 async def misquote(ctx , *target : discord.User):
     # Helper to check that this is the right message
     def pred(m):
@@ -296,7 +245,6 @@ async def misquote(ctx , *target : discord.User):
                           ctx.message.channel.name]))
 
 # --- Pin commands ---
-@bot.command(aliases=['p'])
 async def put(ctx, *, request:str):
     """
     Stores an existing message from the same channel as a pin with an alias.
@@ -462,7 +410,6 @@ async def put(ctx, *, request:str):
                           'invalid_pin_request',
                           ctx.message.channel.name]))
 
-@bot.command(aliases=['g'])
 async def get(ctx, *, alias:str):
     """Get a pinned message by providing the alias."""
 
@@ -505,7 +452,6 @@ async def get(ctx, *, alias:str):
         await ctx.channel.send(f'*{alias}* not found in pins')
         return
 
-@bot.command(aliases=['l'])
 async def list(ctx, *, request:str=''):
     """Lists all (or all matching) aliases in the pin database
     and direct messages to the requester (along with a preview).
@@ -611,7 +557,6 @@ async def list(ctx, *, request:str=''):
 
     return
 
-@bot.command(aliases=['d'])
 async def delete(ctx, *, alias:str):
     """Deletes an alias from the set of stored pins.
     """
@@ -654,9 +599,9 @@ async def delete(ctx, *, alias:str):
 
     return
 
-@bot.command()
 async def test(ctx):
-    # Function for debugging the current status of all the quote commands.
+    """Function for debugging the current status of all the quote commands.
+    """
 
     # --- Helper functions ---
     async def get_last_real_message():
