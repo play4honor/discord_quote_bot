@@ -14,24 +14,13 @@ from pathlib import Path
 import boto3
 import botocore
 
-import src.author_model.author_model as author
+#import src.author_model.author_model as author
 from src.bot.utils import log_msg, block_format, parse_msg_url, parse_request, clean_up_request
 import src.bot.db as db
 
 from src.bot.webhook_quote import get_hook, webhook_quote
 from src.bot.quote import bot_quote
-
-# Configure logging
-log = logging.getLogger(__name__)
-fmt = logging.Formatter(u'\u241e'.join(['%(asctime)s',
-                                        '%(name)s',
-                                        '%(levelname)s',
-                                        '%(funcName)s',
-                                        '%(message)s']))
-streamInstance = logging.StreamHandler(stream=sys.stdout)
-streamInstance.setFormatter(fmt)
-log.addHandler(streamInstance)
-log.setLevel(logging.DEBUG)
+from logzero import logger as log
 
 # # Load Frame Data json
 # with open('sfv.json', 'r') as f:
@@ -70,7 +59,7 @@ async def me(ctx, *text : str):
     except Exception as e:
         log.warning(log_msg(['delete_request_failed', ctx.message.id, e]))
 
-async def quote(ctx, *, request:str):
+async def quote(ctx, *, request:str, bot):
     """
     Quotes an existing message from the same channel.
     request = (MessageID|MessageURL)
@@ -161,7 +150,7 @@ async def quote(ctx, *, request:str):
                           'invalid_quote_request',
                           ctx.message.channel.name]))
 
-async def misquote(ctx , *target : discord.User):
+""" async def misquote(ctx , *target : discord.User):
     # Helper to check that this is the right message
     def pred(m):
         return (
@@ -243,7 +232,7 @@ async def misquote(ctx , *target : discord.User):
         log.info(log_msg(['sent_message',
                           'invalid_misquote_request',
                           ctx.message.channel.name]))
-
+ """
 # --- Pin commands ---
 async def put(ctx, *, request:str):
     """
@@ -685,11 +674,4 @@ async def test(ctx):
             , request=f'https://discord.com/channels/106536439809859584/202198069691940865/738132703253233735')
 
     await ctx.channel.send('|---END TESTING QUOTE FUNCTIONS---|')
-
-if __name__=='__main__':
-    if os.environ['DISCORD_QUOTEBOT_TOKEN']:
-        log.info(log_msg(['token_read']))
-
-    log.info(log_msg(['bot_intialize']))
-    bot.run(os.environ['DISCORD_QUOTEBOT_TOKEN'])
 
