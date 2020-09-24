@@ -11,7 +11,7 @@ from logzero import logger as log
 import sys
 import os
 
-sys.path.append('../../')
+#sys.path.append('../../')
 from src.bot.utils import log_msg
 import src.bot.db as db
 import src.bot.legacy_discord_quote as old

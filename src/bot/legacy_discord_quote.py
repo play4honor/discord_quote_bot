@@ -13,7 +13,7 @@ from pathlib import Path
 import boto3
 import botocore
 
-#import src.author_model.author_model as author
+import src.author_model.author_model as author
 from src.bot.utils import log_msg, block_format, parse_msg_url, parse_request, clean_up_request
 import src.bot.db as db
 
