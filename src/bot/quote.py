@@ -12,9 +12,6 @@ async def bot_quote(ctx, bot, msg_, reply: str=False):
     quote = False
     author = msg_.author.name
     message_time = msg_.created_at.strftime("%Y-%m-%d %H:%M:%S")
-    # This is hacky
-    if (reply == ''):
-        reply = False
 
     # If previously quoted, find the original author
     if msg_.author.name == bot.user.name:
