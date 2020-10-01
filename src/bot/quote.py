@@ -4,7 +4,7 @@ import re
 from src.bot.utils import block_format, log_msg
 from logzero import logger as log
 
-async def bot_quote(ctx, bot, msg_, *reply : str):
+async def bot_quote(ctx, bot, msg_, reply: str=False):
     # This is the old way to quote things, if you don't have the 'Manage
     # WebHooks' permission, but you have a bot user, then this is what will be
     # used.
@@ -12,6 +12,9 @@ async def bot_quote(ctx, bot, msg_, *reply : str):
     quote = False
     author = msg_.author.name
     message_time = msg_.created_at.strftime("%Y-%m-%d %H:%M:%S")
+    # This is hacky
+    if (reply == ''):
+        reply = False
 
     # If previously quoted, find the original author
     if msg_.author.name == bot.user.name:
@@ -70,7 +73,7 @@ async def bot_quote(ctx, bot, msg_, *reply : str):
         output = (
             f"{clean_content}\n**{ctx.message.author.name} " +
             f"[{ctx.message.created_at.strftime('%Y-%m-%d %H:%M:%S')}] " +
-            f"responded:** {' '.join(reply)}"
+            f"responded:** {reply}"
         )
     else:
         log.info(log_msg(['formatting_quote', 'reply|quote']))
@@ -82,10 +85,10 @@ async def bot_quote(ctx, bot, msg_, *reply : str):
                 "\n" +
                 f"**{ctx.message.author.name} " +
                 f"[{ctx.message.created_at.strftime('%Y-%m-%d %H:%M:%S')}] " +
-                f"responded:** {' '.join(reply)}"
+                f"responded:** {reply}"
         )
 
-    log.info(log_msg(['formatted_quote', ' '.join(reply)]))
+    log.info(log_msg(['formatted_quote', reply]))
 
     await ctx.channel.send(output)
 

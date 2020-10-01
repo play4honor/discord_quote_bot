@@ -118,7 +118,7 @@ async def quote(ctx, *, request:str, bot):
 
         # Use WebHooks if possible
         if hook:
-            payload = await webhook_quote(ctx, bot, msg_, *reply)
+            payload = await webhook_quote(ctx, bot, msg_, reply)
 
             # We retain the output (so we can reference it, if necessary)
             out = await hook.send(
@@ -134,7 +134,7 @@ async def quote(ctx, *, request:str, bot):
                               ctx.message.channel.name]))
 
         else:
-            await bot_quote(ctx, bot, msg_, *reply)
+            await bot_quote(ctx, bot, msg_, reply)
 
     except discord.errors.HTTPException as e:
         log.warning(['msg_not_found', msg_id, ctx.message.author.mention, e])
@@ -149,7 +149,7 @@ async def quote(ctx, *, request:str, bot):
                           'invalid_quote_request',
                           ctx.message.channel.name]))
 
-""" async def misquote(ctx , *target : discord.User):
+async def misquote(ctx , *target : discord.User, bot):
     # Helper to check that this is the right message
     def pred(m):
         return (
@@ -231,7 +231,7 @@ async def quote(ctx, *, request:str, bot):
         log.info(log_msg(['sent_message',
                           'invalid_misquote_request',
                           ctx.message.channel.name]))
- """
+ 
 # --- Pin commands ---
 async def put(ctx, *, request:str, bucket, bot):
     """

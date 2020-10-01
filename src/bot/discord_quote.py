@@ -83,8 +83,12 @@ async def quote(ctx, *, request:str):
 @bot.command()
 async def misquote(ctx , *target : discord.User):
     """
+    Attributes questionably sourced text to a given user.
+    If provided a user id, that user will be spuriously quoted,
+    If not, a predicted user will be assigned
+    target = User ID (@) [Optional]
     """
-    pass
+    await old.misquote(ctx, *target, bot=bot)
 
 # --- Pin commands ---
 @bot.command(aliases=['p'])

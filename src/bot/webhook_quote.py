@@ -2,6 +2,8 @@ import asyncio
 import arrow
 import re
 
+from typing import Union
+
 from src.bot.utils import block_format, log_msg
 from logzero import logger as log
 
@@ -34,16 +36,17 @@ async def get_hook(ctx, bot, channel_id=None):
 
     return(hook)
 
-async def webhook_quote(ctx, bot, msg_, *reply: str):
+async def webhook_quote(ctx, bot, msg_, reply: str=False):
     # This version depends on everything being well quoted (e.g., with jumpurls)
     # If the message that has been passed is assigned to the bot, then it is a
     # previous quote.
     quote = (msg_.author.name == bot.user.name)
+
     if not quote:
         if reply:
             output = (
                 await _format_message(ctx, msg_, 'said') +
-                f"**{ctx.message.author.name} responded:** {' '.join(reply)}"
+                f"**{ctx.message.author.name} responded:** {reply}"
             )
         if not reply:
             output = (
@@ -55,7 +58,7 @@ async def webhook_quote(ctx, bot, msg_, *reply: str):
         if reply:
             output = (
                 await _format_quote(ctx, msg_) +
-                f"\n**{ctx.message.author.name} responded:** {' '.join(reply)}"
+                f"\n**{ctx.message.author.name} responded:** {reply}"
             )
         elif not reply:
             output = await _format_quote(ctx, msg_)
