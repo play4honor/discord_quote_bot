@@ -2,8 +2,6 @@ import asyncio
 import arrow
 import re
 
-from typing import Union
-
 from src.bot.utils import block_format, log_msg
 from logzero import logger as log
 
