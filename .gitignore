@@ -3,3 +3,4 @@ venv/*
 *.db
 *.pyc
 scratch.ipynb
+*.egg-info
