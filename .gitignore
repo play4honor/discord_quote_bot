@@ -1,2 +1,6 @@
 venv/*
 .vscode/
+*.db
+*.pyc
+scratch.ipynb
+*.egg-info

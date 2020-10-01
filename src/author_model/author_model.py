@@ -1,10 +1,16 @@
 import torch
 import re
-from AuthorNet import AuthorNet
+import os
+import sys
+from src.author_model.AuthorNet import AuthorNet
+
+# Hacky stuff because pickle
+sys.path.insert(0, './src/author_model')
 
 _DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-_CHECKPOINT = torch.load("Candidate_1_Adam_06701", map_location=_DEVICE)
+_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'bin', 'author_model')
+_CHECKPOINT = torch.load(os.path.join(_DIR, "Candidate_1_Adam_06701"), map_location=_DEVICE)
 _VOCAB = _CHECKPOINT['vocab']
 
 _NET = AuthorNet(24, 11, _VOCAB).to(_DEVICE)
